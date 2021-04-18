@@ -32,9 +32,11 @@ def generate_struct_mask(struct, n_nodes, shuffle_nodes):
     elif struct == "ladder":
         g = nx.ladder_graph(n_nodes)
     elif struct == "grid":
-        m = np.random.choice(range(1, n_nodes+1))
-        n = n_nodes // m
-        g = nx.grid_2d_graph(m, n)
+        n = m = int(np.sqrt(n_nodes))
+        assert n*m == n_nodes
+        # m = np.random.choice(range(1, n_nodes+1))
+        # n = n_nodes // m
+        g = nx.generators.lattice.grid_2d_graph(m, n)
     elif struct == "circ_ladder":
         g = nx.circular_ladder_graph(n_nodes)
     elif struct == "barbell":
@@ -64,6 +66,10 @@ def generate_struct_mask(struct, n_nodes, shuffle_nodes):
     else:
         raise NotImplementedError("Structure {} not implemented yet.".format(struct))
 
+    # fix bugs, relabel nodes to make sure nodes are indexed by integers!
+    mapping = {n:idx for idx,n in enumerate(g.nodes())}
+    g = nx.relabel_nodes(g, mapping)
+
     node_order = list(range(n_nodes))
     if shuffle_nodes:
         np.random.shuffle(node_order)
@@ -89,7 +95,7 @@ def construct_binary_mrf(struct, n_nodes, shuffle_nodes=True):
     """
     W = np.random.normal(0., 1., (n_nodes, n_nodes))
     W = (W + W.T) / 2
-    b = np.random.normal(0., 0.25, n_nodes)
+    b = np.random.normal(0., 0.25**2, n_nodes)
     mask = generate_struct_mask(struct, n_nodes, shuffle_nodes)
     W *= mask
     return BinaryMRF(W, b, struct=struct)
