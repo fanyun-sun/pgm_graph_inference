@@ -14,7 +14,7 @@ def parse_train_args():
 
 if __name__ == "__main__":
     args = parse_train_args()
-    data = np.load(args.data_file).item(0)
+    data = np.load(args.data_file, allow_pickle=True).item(0)
     # print(data.keys())
 
     # print(data['true_labels'])

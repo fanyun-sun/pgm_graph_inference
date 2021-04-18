@@ -83,7 +83,7 @@ class BeliefPropagation(Inference):
         xij = np.array([[1,-1],[-1,1]])
         xi = np.array([-1, 1])
         converged = False
-        for _ in range(max_iters):
+        for iter in range(max_iters):
             # save old message for checking convergence
             old_messages = messages.copy()
             # update messages
@@ -113,8 +113,8 @@ class BeliefPropagation(Inference):
                         messages[index_bases[i]+k] = in_message_prod - \
                            (messages[index_bases[j]+neighbors[j].index(i)])
                     else:
-                        messages[index_bases[i]+k] = self._safe_divide(in_message_prod, 
-                           messages[index_bases[j]+neighbors[j].index(i)])                        
+                        messages[index_bases[i]+k] = self._safe_divide(in_message_prod,
+                           messages[index_bases[j]+neighbors[j].index(i)])
                 # update
                 messages[index_bases[i]:index_bases[i]+degrees[i]] = sumOp(messages[index_bases[i]:index_bases[i]+degrees[i]].reshape(degrees[i],2,1) + local_potential, axis=1)
  
@@ -123,7 +123,7 @@ class BeliefPropagation(Inference):
                 error = (self._safe_norm_exp(messages) - self._safe_norm_exp(old_messages))**2
             else:
                 error = (messages - old_messages)**2
-            
+
             if len(error):
                 error = error.mean()
             else:
@@ -134,7 +134,7 @@ class BeliefPropagation(Inference):
                 #print(error)
                 break
 
-        # if self.verbose: print("Is BP converged: {}".format(converged))
+        if self.verbose: print("Is BP converged: {}".format(converged))
 
         # calculate marginal or map
         probs = np.zeros([n_V, 2])
@@ -172,4 +172,3 @@ class BeliefPropagation(Inference):
 
 if __name__ == "__main__":
     bp = BeliefPropagation("marginal")
-    

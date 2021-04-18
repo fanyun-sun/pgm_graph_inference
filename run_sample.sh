@@ -1,5 +1,4 @@
-
-#!/bin/bash
+#!/bin/bash -ex
 # Sample run with full pipeline
 # run as bash run_small.sh 
 
@@ -18,7 +17,7 @@ echo -e "\tFor example, trees_medium contains "star": [15, 16, 17], and "path": 
 python train.py --train_set_name path_small --mode marginal --epochs 5 --verbose True
 
 echo -e "\tGenerate plots for bp, mcmc, and gnn for the given experiment in experiments folder and saved the output in experiments/saved_exp_res"
-python ./experiments/run_exps.py --exp_name in_sample_path
+python run_exps.py --exp_name in_sample_path
 
 echo -e "\tCompute MAP for bp, mcmc, and gnn"
-python ./experiments/saved_exp_res/compute_MAP_accuracy.py --data_file ./experiments/saved_exp_res/res_path_small_path_small.npy
+python compute_MAP_accuracy.py --data_file ./experiments/saved_exp_res/res_path_small_path_small.npy

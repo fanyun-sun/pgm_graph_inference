@@ -144,5 +144,3 @@ if __name__=="__main__":
 
     # saves to final paths if labeled, otherwise to args.unlab_graphs_path
     save_graphs(graphs, list_of_res, args)
-    
-

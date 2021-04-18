@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 # Runner of small exact experiment
 # run as run_small.sh make_data path
 
@@ -20,6 +20,6 @@ then
 elif [ $1 == 'test' ]
 then
     echo -e "\tRunning tests"
-    python ./experiments/run_exps.py --exp_name in_sample_$2
+    python run_exps.py --exp_name in_sample_$2
 
 fi

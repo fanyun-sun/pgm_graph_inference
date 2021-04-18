@@ -35,7 +35,7 @@ class GGNN(nn.Module):
             nn.ReLU(),
             nn.Linear(self.hidden_unit_readout_dim, 2),
         )
-        
+
         # self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
         self._initialization()
@@ -56,7 +56,13 @@ class GGNN(nn.Module):
         for step in range(self.n_steps):
             for i in range(n_nodes):
                 for j in range(n_nodes):
-                    message_in = torch.cat([hidden_states[i,:],hidden_states[j,:],J[i,j].unsqueeze(0),b[i].unsqueeze(0),b[j].unsqueeze(0)])
+                    message_in = torch.cat([
+                        hidden_states[i,:],
+                        hidden_states[j,:],
+                        J[i,j].unsqueeze(0),
+                        b[i].unsqueeze(0),
+                        b[j].unsqueeze(0)
+                    ])
                     message_i_j[i,j,:] = self.message_passing(message_in)
 
             message_i=torch.sum(message_i_j,0)

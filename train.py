@@ -10,7 +10,6 @@ Authors: kkorovin@cs.cmu.edu, markcheu@andrew.cmu.edu
 
 import os
 import argparse
-from time import time
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -19,6 +18,7 @@ import matplotlib.pyplot as plt
 from experiments.exp_helpers import get_dataset_by_name
 from inference import get_algorithm
 from constants import *
+
 
 # Loss computer objects that let us save a little on creating objects----------
 class CrossEntropyComputer:
@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     print("Model saved in {}".format(model_path))
 
-    losses = gnn_inference.history["loss"]
-    plt.plot(range(1, len(losses)+1), losses)
-    plt.savefig(os.path.join(args.model_dir, "training_hist_{}".format(args.train_set_name)))
+    # losses = gnn_inference.history["loss"]
+    # plt.plot(range(1, len(losses)+1), losses)
+    # plt.savefig(os.path.join(args.model_dir, "training_hist_{}".format(args.train_set_name)))
 
 

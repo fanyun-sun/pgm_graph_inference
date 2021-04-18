@@ -2,7 +2,7 @@ papers/
 **/__pycache__
 graphical_models/datasets/
 inference/pretrained/
-experiments/saved_exp_res/
+experiments/saved_exp_res/*
 .ipynb*
 .DS_Store
 *.ipynb

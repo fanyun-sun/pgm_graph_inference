@@ -89,6 +89,10 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
 
     train_data = get_dataset_by_name(train_set_name, train_path)
     test_data  = get_dataset_by_name(test_set_name, test_path, mode=inference_mode)
+
+    print('load model from {}'.format(model_load_path))
+    print('load train data from {}/{}'.format(train_path, train_set_name))
+    print('load test data from {}/{}'.format(test_path, test_set_name))
  
     # load model
     n_hidden_states = 5
@@ -108,10 +112,15 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     t0 = time()
     gnn_res = gnn_inference.run(test_data, DEVICE)
     times["gnn"] = (time()-t0) / len(test_data)
-    
+
     t0 = time()
-    bp = get_algorithm("bp")(inference_mode)
-    bp_res = bp.run(test_data, use_log=True, verbose=False)
+    use_tree_bp = False
+    if use_tree_bp:
+        bp = get_algorithm("tree_bp")(inference_mode)
+        bp_res = bp.run(test_data, verbose=False)
+    else:
+        bp = get_algorithm("bp")(inference_mode)
+        bp_res = bp.run(test_data, use_log=True, verbose=False)
     times["bp"] = (time()-t0) / len(test_data)
 
     # TODO! don't forget to uncomment
@@ -159,8 +168,8 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
             filename="./experiments/saved_exp_res/res_{}_{}".format(train_set_name, test_set_name))
 
         # plot them
-        plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels,
-            filename="./experiments/res_{}_{}".format(train_set_name, test_set_name))
+        # plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels,
+            # filename="./experiments/res_{}_{}".format(train_set_name, test_set_name))
 
     # MAP: only numeric
     else:
@@ -201,7 +210,12 @@ def parse_exp_args():
 def save_marginal_results(true_labels, gnn_labels, bp_labels, mcmc_labels, filename, colors=None):
     res = {'true_labels': true_labels, 'gnn_labels': gnn_labels, 'bp_labels': bp_labels,
             'mcmc_labels': mcmc_labels, 'colors': colors}
+    for k, v in res.items():
+        if k == 'colors':
+            continue
+        print('{}, RMSE: {:.5f}'.format(k, np.sqrt(((np.array(true_labels) - np.array(v))**2).mean())))
     np.save(filename, res, allow_pickle=True)
+    # np.save(filename, res)
 
 def plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels, filename):
     fsize=(10,10)
@@ -328,6 +342,3 @@ if __name__ == "__main__":
         plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels, filename)
     else:
         raise ValueError(f"Unrecognized experiment `{args.exp_name}`")
-
-
-
