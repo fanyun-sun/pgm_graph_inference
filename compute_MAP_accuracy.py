@@ -14,6 +14,7 @@ def parse_train_args():
 
 if __name__ == "__main__":
     args = parse_train_args()
+    print('load results from {]'.format(args.data_file))
     data = np.load(args.data_file, allow_pickle=True).item(0)
     # print(data.keys())
 

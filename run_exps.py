@@ -160,8 +160,10 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
         #     colors.extend([g.struct] * g.n_nodes)
 
         # save these results
+        filename = "./experiments/saved_exp_res/res_{}_{}_{}".format(train_set_name, test_set_name, args.model_name)
+        print('save results at {}'.format(filename))
         save_marginal_results(true_labels, gnn_labels, bp_labels, mcmc_labels,
-            filename="./experiments/saved_exp_res/res_{}_{}".format(train_set_name, test_set_name))
+            filename=filename)
 
         # plot them
         # plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels,

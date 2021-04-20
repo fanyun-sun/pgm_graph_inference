@@ -13,11 +13,14 @@ from inference.mcmc import GibbsSampling
 from inference.bp_tree import TreeBP
 from inference.mybp import MyBeliefPropagation
 from inference.factor_gnn_inference import FactorGNNInference
+from inference.vanilla_gnn_inference import VanillaGNNInference
 
 
 def get_algorithm(algo_name):
     """ Returns a constructor """
-    if algo_name == "factor_gnn_inference":
+    if algo_name == 'vanilla_gnn_inference':
+        return VanillaGNNInference
+    elif algo_name == "factor_gnn_inference":
         return FactorGNNInference 
     elif algo_name == "mybp":
         return MyBeliefPropagation
