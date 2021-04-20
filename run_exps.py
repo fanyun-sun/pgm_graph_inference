@@ -95,7 +95,7 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     print('load test data from {}/{}'.format(test_path, test_set_name))
  
     # load model
-    gnn_constructor = get_algorithm("gnn_inference")
+    gnn_constructor = get_algorithm(args.model_name)
     gnn_inference = gnn_constructor(inference_mode, n_hidden_states, 
                                     message_dim_P,hidden_unit_message_dim,
                                     hidden_unit_readout_dim, T,
@@ -199,6 +199,8 @@ def parse_exp_args():
     # critical arguments, change them
     parser.add_argument('--exp_name', type=str,
                         help='name of experiment to run')
+    parser.add_argument('--model_name', default='default',
+                        type=str, help='model name, defaults to the train_set_name')
     args = parser.parse_args()
     return args
 
@@ -307,6 +309,7 @@ def plot_marginal_results_with_colors(true_labels, gnn_labels, bp_labels, mcmc_l
 
 
 if __name__ == "__main__":
+    global args
     args = parse_exp_args()
     if args.exp_name.startswith("in_sample"):
         struct = args.exp_name[len("in_sample_"):]
