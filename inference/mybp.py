@@ -57,35 +57,11 @@ class MyBeliefPropagation(Inference):
         else:
             sumOp = np.max
 
-        from sumproduct import Variable, Factor, FactorGraph
-        import numpy as np
         n_nodes = graph.W.shape[0]
-        g = FactorGraph(silent=True)
-        variables = [Variable('{}'.format(i), 2) for i in range(n_nodes)]
-
-        number_of_factors = 0
-        for i in range(n_nodes):
-            factor_name =  'f{}'.format(i)
-            f_ = Factor(factor_name,
-                        np.array([np.exp(-graph.b[i]), np.exp(graph.b[i])]))
-            g.add(f_)
-            g.append(factor_name, variables[i])
-
-            for j in range(i+1, n_nodes):
-                if graph.W[i, j] != 0.:
-                    factor_name = 'f{}{}'.format(i,j)
-                    fij = Factor(factor_name, np.array([
-                        [np.exp(graph.W[i,j]), np.exp(-graph.W[i,j])],
-                        [np.exp(-graph.W[i,j]), np.exp(graph.W[i,j])]
-                    ]))
-                    g.add(fij)
-                    g.append(factor_name, variables[i])
-                    g.append(factor_name, variables[j])
-                    number_of_factors += 1
+        g = graph.factor_graph
         # import ipdb;ipdb.set_trace()
         g.compute_marginals(max_iter=200, tolerance=1e-20)
         results = probs = np.array([g.nodes['{}'.format(i)].marginal() for i in range(n_nodes)])
-        print(number_of_factors)
         # probs should be `
         # normalize
 

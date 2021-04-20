@@ -25,7 +25,7 @@ plt.rc('font', **font)
 
 from inference import get_algorithm
 from experiments.exp_helpers import get_dataset_by_name
-from constants import *
+from myconstants import *
 
 
 # Train-test pairs ------------------------------------------------------------
@@ -95,11 +95,6 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     print('load test data from {}/{}'.format(test_path, test_set_name))
  
     # load model
-    n_hidden_states = 5
-    message_dim_P = 5
-    hidden_unit_message_dim = 64 
-    hidden_unit_readout_dim = 64
-    T = 10
     gnn_constructor = get_algorithm("gnn_inference")
     gnn_inference = gnn_constructor(inference_mode, n_hidden_states, 
                                     message_dim_P,hidden_unit_message_dim,

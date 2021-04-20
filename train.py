@@ -17,8 +17,7 @@ import matplotlib.pyplot as plt
 
 from experiments.exp_helpers import get_dataset_by_name
 from inference import get_algorithm
-from constants import *
-
+from myconstants import *
 
 # Loss computer objects that let us save a little on creating objects----------
 class CrossEntropyComputer:
@@ -91,25 +90,31 @@ if __name__ == "__main__":
     # elif args.mode == "map":
     #     dataset = [g for g in dataset if g.map is not None]
 
-    # GGNN parmeters
-    n_hidden_states = 5
-    message_dim_P = 5
-    hidden_unit_message_dim = 64 
-    hidden_unit_readout_dim = 64
-    T = 10
-    learning_rate = 1e-2
+    # GGNN parmeters --> move to myconstants.py
+    # n_hidden_states = 5
+    # message_dim_P = 6
+    # hidden_unit_message_dim = 64 
+    # hidden_unit_readout_dim = 64
+    # T = 10
+    # learning_rate = 1e-2
 
     # number of epochs
     epochs = args.epochs
 
-    gnn_constructor = get_algorithm("gnn_inference")
-    gnn_inference = gnn_constructor(args.mode, n_hidden_states, 
-                                    message_dim_P,hidden_unit_message_dim,
-                                    hidden_unit_readout_dim, T, sparse=USE_SPARSE_GNN)
+    if args.model_name == 'default':
+        gnn_constructor = get_algorithm("gnn_inference")
+    else:
+        gnn_constructor = get_algorithm(args.model_name)
+    gnn_inference = gnn_constructor(args.mode, n_hidden_states, message_dim_P,
+                                    hidden_unit_message_dim, hidden_unit_readout_dim,
+                                    T, sparse=USE_SPARSE_GNN)
     if args.use_pretrained != 'none':
         model_path_pre = os.path.join(args.model_dir, args.use_pretrained)
         gnn_inference.load_model(model_path_pre)
         print(f"Model loaded from {model_path_pre}")
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('model parameters', count_parameters(gnn_inference.model))
     optimizer = Adam(gnn_inference.model.parameters(), lr=learning_rate)
 
     if args.mode == "marginal":
@@ -127,5 +132,3 @@ if __name__ == "__main__":
     # losses = gnn_inference.history["loss"]
     # plt.plot(range(1, len(losses)+1), losses)
     # plt.savefig(os.path.join(args.model_dir, "training_hist_{}".format(args.train_set_name)))
-
-

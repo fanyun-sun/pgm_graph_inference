@@ -5,6 +5,10 @@ Authors: markcheu@andrew.cmu.edu, lingxiao@cmu.edu, kkorovin@cs.cmu.edu
 
 import torch
 import torch.nn as nn
+from torch_scatter import scatter
+from torch_geometric.nn.conv import GINConv, GatedGraphConv
+from torch.nn import Sequential, Linear, ReLU
+
 
 class SpecialSpmmFunction(torch.autograd.Function):
     """Special function for only sparse region backpropagation layer."""
@@ -60,9 +64,21 @@ class GGNN(nn.Module):
         self.hidden_unit_message_dim = hidden_unit_message_dim
         self.hidden_unit_readout_dim = hidden_unit_readout_dim
 
-        self.propagator = nn.GRUCell(self.message_dim, self.state_dim)
+
+        # nn1 = Sequential(Linear(2*self.state_dim+1+2, self.hidden_unit_message_dim),
+                         # ReLU(),
+                         # Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim))
+        # nn2 = Sequential(Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
+                         # ReLU(),
+                         # Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim))
+        # self.convs = [GINConv(nn1), GINConv(nn2)]
+
+        self.conv = GatedGraphConv(self.hidden_unit_message_dim, 2)
+
+        # self.propagator = nn.GRUCell(self.message_dim, self.state_dim)
         self.message_passing = nn.Sequential(
-            nn.Linear(2*self.state_dim+1+2, self.hidden_unit_message_dim),
+            nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
+            # nn.Linear(2*self.state_dim+1+2, self.hidden_unit_message_dim),
             # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
@@ -92,35 +108,46 @@ class GGNN(nn.Module):
     # unbatch version for debugging
     def forward(self, J, b):
         n_nodes = len(J)
-        readout = torch.zeros(n_nodes)
         # initialize node embeddings to zeros
-        hidden_states = torch.zeros(n_nodes, self.state_dim).to(J.device)
+        readout = torch.zeros(n_nodes)
+        # hidden_states = torch.zeros(n_nodes, self.state_dim).to(J.device)
 
         row, col = torch.nonzero(J).t()
+        # edge_messages = torch.cat([hidden_states[row,:],
+                       # hidden_states[col,:],
+                       # J[row,col].unsqueeze(-1),
+                       # b[row].unsqueeze(-1),
+                       # b[col].unsqueeze(-1)], dim=-1).to(J.device)
+        edge_messages = torch.cat([J[row,col].unsqueeze(-1),
+                                   b[row].unsqueeze(-1),
+                                   b[col].unsqueeze(-1)], dim=-1).to(J.device)
+
+        edge_index = []
+        num_edges = row.shape[0]
+        for i in range(num_edges):
+            # consider node (row[i], col[i])
+            for j in range(num_edges):
+                # consider node (row[j], col[j])
+                if i == j:
+                    continue
+                if col[i].item() == row[j].item():
+                    edge_index.append([i,j])
+
+        edge_index = torch.LongTensor(edge_index).t().to(J.device)
+        # import ipdb;ipdb.set_trace()
+        # for i in range(len(self.convs)):
+            # edge_messages = self.convs[i](edge_messages, edge_index)
+        edge_messages = self.conv(edge_messages, edge_index)
+
+        edge_messages = self.message_passing(edge_messages).t().reshape(-1) # in message, (dim2*dim0*dim1)
         edges = torch.nonzero(J.unsqueeze(-1).expand(-1, -1, self.message_dim).permute(2,0,1)).t()# (dim2*dim0*dim1) 
-        # [3, #msg*msg_dim], the 3 comes from (particular message dim, row, col)
+        node_messages = self.spmm(edges,
+                                  edge_messages,
+                                  torch.Size([self.message_dim, n_nodes, n_nodes]),
+                                  torch.ones(size=(n_nodes,1)).to(J.device)) # (dim0, dim2)
 
-        for step in range(self.n_steps):
-            # (dim0*dim1, dim2)
-            edge_messages = torch.cat([hidden_states[row,:],
-                                       hidden_states[col,:],
-                                       J[row,col].unsqueeze(-1),
-                                       b[row].unsqueeze(-1),
-                                       b[col].unsqueeze(-1)], dim=-1)
-            # (num_messages, raw feat_dim)
-            edge_messages = self.message_passing(edge_messages).t().reshape(-1) # in message, (dim2*dim0*dim1)
-            # (num_messages * message_dim)
-
-            # compute AGGREGATED messages
-            node_messages = self.spmm(edges,
-                                      edge_messages,
-                                      torch.Size([self.message_dim, n_nodes, n_nodes]),
-                                      torch.ones(size=(n_nodes,1)).to(J.device)) # (dim0, dim2)
-            # n_nodes x message_dim
-            # the COMBINE function
-            hidden_states = self.propagator(node_messages, hidden_states)
-
-        readout = self.readout(hidden_states)
+        readout = self.readout(node_messages)
+        # readout = self.readout(hidden_states)
         readout = self.softmax(readout)
         # readout = self.sigmoid(readout)
         # readout = readout / torch.sum(readout,1).view(-1,1)

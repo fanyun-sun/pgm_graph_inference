@@ -5,18 +5,21 @@ Authors: kkorovin@cs.cmu.edu
 
 """
 
-from inference.mybp import MyBeliefPropagation
 from inference.bp import BeliefPropagation
 from inference.bp_nonsparse import BeliefPropagation_nonsparse
 from inference.gnn_inference import GatedGNNInference
 from inference.exact import ExactInference
 from inference.mcmc import GibbsSampling
 from inference.bp_tree import TreeBP
+from inference.mybp import MyBeliefPropagation
+from inference.factor_gnn_inference import FactorGNNInference
 
 
 def get_algorithm(algo_name):
     """ Returns a constructor """
-    if algo_name == "mybp":
+    if algo_name == "factor_gnn_inference":
+        return FactorGNNInference 
+    elif algo_name == "mybp":
         return MyBeliefPropagation
     elif algo_name == "bp":
         return BeliefPropagation

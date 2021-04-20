@@ -6,7 +6,7 @@ if [ $1 == 'make_data' ]
 then
     echo -e "\tCreating train data"
     python create_data.py --graph_struct $2 --size_range 9_9 \
-                          --num 1300 --data_mode train --mode marginal --algo exact \
+                          --num 13000 --data_mode train --mode marginal --algo exact \
                           --verbose True
     echo -e "\tCreating test data"
     python create_data.py --graph_struct $2 --size_range 9_9 \

@@ -116,7 +116,8 @@ class BeliefPropagation(Inference):
                         messages[index_bases[i]+k] = self._safe_divide(in_message_prod,
                            messages[index_bases[j]+neighbors[j].index(i)])
                 # update
-                messages[index_bases[i]:index_bases[i]+degrees[i]] = sumOp(messages[index_bases[i]:index_bases[i]+degrees[i]].reshape(degrees[i],2,1) + local_potential, axis=1)
+                messages[index_bases[i]:index_bases[i]+degrees[i]] = \
+                    sumOp(messages[index_bases[i]:index_bases[i]+degrees[i]].reshape(degrees[i],2,1) + local_potential, axis=1)
  
             # check convergence 
             if use_log:
