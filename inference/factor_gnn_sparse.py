@@ -107,32 +107,28 @@ class GGNN(nn.Module):
 
     # unbatch version for debugging
     def forward(self, J, b):
-        n_nodes = len(J)
-        # initialize node embeddings to zeros
-        readout = torch.zeros(n_nodes)
-        # hidden_states = torch.zeros(n_nodes, self.state_dim).to(J.device)
-
         row, col = torch.nonzero(J).t()
-        # edge_messages = torch.cat([hidden_states[row,:],
-                       # hidden_states[col,:],
-                       # J[row,col].unsqueeze(-1),
-                       # b[row].unsqueeze(-1),
-                       # b[col].unsqueeze(-1)], dim=-1).to(J.device)
-        edge_messages = torch.cat([J[row,col].unsqueeze(-1),
-                                   b[row].unsqueeze(-1),
-                                   b[col].unsqueeze(-1)], dim=-1).to(J.device)
+        n_nodes = len(J)
+        n_edges = row.shape[0]
+        readout = torch.zeros(n_nodes)
+        # initialize node embeddings to zeros
+        variable_nodes_feat = torch.zeros(n_nodes, self.state_dim).to(J.device)
+        variable_nodes_feat[:, 0] = 0.
+        
+        factor_nodes_feat = torch.zeros(n_nodes + n_edges, self.state_dim)
+        factor_nodes_feat[:, 0] = 1.
+        factor_nodes_feat[:, 1] = J[row, col]
 
         edge_index = []
-        num_edges = row.shape[0]
-        for i in range(num_edges):
-            # consider node (row[i], col[i])
-            for j in range(num_edges):
-                # consider node (row[j], col[j])
-                if i == j:
-                    continue
-                if col[i].item() == row[j].item():
-                    edge_index.append([i,j])
-
+        for i in range(n_node):
+            edge_index.append([i, n_nodes+i])
+            edge_index.append([n_nodes+i, i])
+        for i in range(n_edges):
+            # consider factor node idx: n_nodes+i
+            edge_index.append([n_nodes+i, row[i]])
+            edge_index.append([row[i], n_nodes+i])
+            edge_index.append([n_nodes+i, col[i]])
+            edge_index.append([col[i], n_nodes+i])
         edge_index = torch.LongTensor(edge_index).t().to(J.device)
         # import ipdb;ipdb.set_trace()
         # for i in range(len(self.convs)):
