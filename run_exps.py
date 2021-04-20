@@ -85,7 +85,8 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     """
     train_path = os.path.join(base_data_dir, "train")
     test_path = os.path.join(base_data_dir, "test")
-    model_load_path = os.path.join(model_base_dir, train_set_name)
+     
+    model_load_path = os.path.join(model_base_dir, args.model_name + '-' +  train_set_name)
 
     train_data = get_dataset_by_name(train_set_name, train_path)
     test_data  = get_dataset_by_name(test_set_name, test_path, mode=inference_mode)

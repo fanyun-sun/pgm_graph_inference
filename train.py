@@ -79,10 +79,7 @@ if __name__ == "__main__":
     dataset = get_dataset_by_name(args.train_set_name, args.data_dir, 
                                   mode=args.mode)
     os.makedirs(args.model_dir, exist_ok=True)
-    if args.model_name == "default":
-        model_path = os.path.join(args.model_dir, args.train_set_name)
-    else:
-        model_path = os.path.join(args.model_dir, args.model_name)
+    model_path = os.path.join(args.model_dir, args.model_name + '-' + args.train_set_name)
 
     # # filter by mode:
     # if args.mode =="marginal":
