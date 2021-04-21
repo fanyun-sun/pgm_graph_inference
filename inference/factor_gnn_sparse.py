@@ -68,18 +68,14 @@ class GGNN(nn.Module):
         self.fac2var_propagator = nn.GRUCell(self.message_dim, self.state_dim)
 
         self.var2fac_message_passing = nn.Sequential(
-            # nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
-            nn.Linear(2*self.state_dim+8, self.hidden_unit_message_dim),
-            # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
+            nn.Linear(self.state_dim+1, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.message_dim),
         )
         self.fac2var_message_passing = nn.Sequential(
-            # nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
-            nn.Linear(2*self.state_dim+8, self.hidden_unit_message_dim),
-            # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
+            nn.Linear(self.state_dim+1, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
             nn.ReLU(),
@@ -110,62 +106,89 @@ class GGNN(nn.Module):
         n_var_nodes = len(J)
         row, col = torch.nonzero(J).t()
         n_edges = row.shape[0]
-        factors = [(row[i], col[i]) for i in range(len(row)) if row[i] < col[i]]
+        factors = [(row[i].item(), col[i].item()) for i in range(len(row)) if row[i] < col[i]]
         n_factors = len(factors)
         assert n_factors == n_edges//2
 
-        var_hidden_states = torch.zeros(n_var_nodes, self.state_dim).to(J.device)
-        fac_hidden_states = torch.zeros(n_factors,   self.state_dim).to(J.device)
 
         var2fac_edge_index = []
-        var2fac_edge_feat = []
-        fac2var_edge_index = []
-        fac2var_edge_feat = []
-
         for i in range(len(factors)):
-            # consider factor idx: n_var_nodes+i is connected to 
-            # node factors[i][0], and node factors[i][1]
+            # factor i is connected to node factors[i][0], and node factors[i][1]
             u, v = factors[i]
             var2fac_edge_index.append([u, i])
             var2fac_edge_index.append([v, i])
+        # var2fac_edge_index = torch.LongTensor(var2fac_edge_index).t().to(J.device)
+        num_var2fac_msg_nodes = len(var2fac_edge_index)
+        var2fac_hidden_states = torch.zeros(num_var2fac_msg_nodes, self.state_dim)
+
+        fac2var_edge_index = []
+        for i in range(len(factors)):
+            # factor i is connected to node factors[i][0], and node factors[i][1]
+            u, v = factors[i]
             fac2var_edge_index.append([i, u])
             fac2var_edge_index.append([i, v])
+        num_fac2var_msg_nodes = len(fac2var_edge_index)
+        fac2var_hidden_states = torch.zeros(num_fac2var_msg_nodes, self.state_dim)
 
-            var2fac_edge_feat.append([0., b[u], b[v], J[u,v]])
-            var2fac_edge_feat.append([0., b[u], b[v], J[u,v]])
-            fac2var_edge_feat.append([1., b[u], b[v], J[u,v]])
-            fac2var_edge_feat.append([1., b[u], b[v], J[u,v]])
 
-        var2fac_edge_index = torch.LongTensor(var2fac_edge_index).t().to(J.device)
-        var2fac_edge_feat = torch.FloatTensor(var2fac_edge_feat).to(J.device)
-        fac2var_edge_index = torch.LongTensor(fac2var_edge_index).t().to(J.device)
-        fac2var_edge_feat  = torch.FloatTensor(fac2var_edge_feat).to(J.device)
+        f2v_to_v2f_edge_index = []
+        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 1)
+        v2f_to_f2v_edge_index = []
+        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 1)
+
+        for ii in range(num_var2fac_msg_nodes):
+            # ii is the index of var2fac_msg_node 
+            # considering msg_{u -> fv}
+            u, fv = var2fac_edge_index[ii]
+            for jj in range(num_fac2var_msg_nodes):
+                # jj is the index of fac2var msg node
+                # considering msg_{fu -> v}
+                fu, v = fac2var_edge_index[jj]
+                if u == v and fv != fu:
+                    f2v_to_v2f_edge_index.append([jj, ii])
+                    f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item()])
+
+                if fv == fu and u != v:
+                    v2f_to_f2v_edge_index.append([ii, jj])
+                    v2f_to_f2v_feat[ii, jj, :] = torch.Tensor([J[factors[fu][0], factors[fu][1]].item()])
+
+        f2v_to_v2f_edge_index = torch.LongTensor(f2v_to_v2f_edge_index).t()
+        v2f_to_f2v_edge_index = torch.LongTensor(v2f_to_f2v_edge_index).t()
+        # var2fac_edge_feat = torch.FloatTensor(var2fac_edge_feat).to(J.device)
+        # fac2var_edge_feat  = torch.FloatTensor(fac2var_edge_feat).to(J.device)
 
         for step in range(self.n_steps):
-            # fac2var message passing
-            row, col = fac2var_edge_index
-            edge_messages = torch.cat([fac_hidden_states[row, :],
-                                       var_hidden_states[col, :],
-                                       fac2var_edge_feat[row, :],
-                                       fac2var_edge_feat[col, :]], dim=-1)
+            # f2v_to_v2f
+            # calculate var2fac messages from fac2var message nodes
+            # row is the indices of fac2var message nodes
+            # col is the indices of var2fac message nodes
+            row, col  = f2v_to_v2f_edge_index
+            raw_edge_messages = torch.cat([fac2var_hidden_states[row, :],
+                                           f2v_to_v2f_feat[row, col, :]], dim=-1)
+            edge_messages = self.var2fac_message_passing(raw_edge_messages)
 
-
-            edge_messages = self.fac2var_message_passing(edge_messages)
             node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
-            var_hidden_states = self.fac2var_propagator(node_messages, var_hidden_states)
+            var2fac_hidden_states = self.var2fac_propagator(node_messages, var2fac_hidden_states)
+            # we get the updated hidden_states of var2fac msg nodes
 
-            # var2fac message passing
-            row, col = var2fac_edge_index
-            edge_messages = torch.cat([var_hidden_states[row, :],
-                                       fac_hidden_states[col, :],
-                                       var2fac_edge_feat[row, :],
-                                       var2fac_edge_feat[col, :]], dim=-1)
+            # calculate fac2var messages from var2fac messages
+            row, col = v2f_to_f2v_edge_index
+            raw_edge_messages = torch.cat([var2fac_hidden_states[row, :],
+                                           v2f_to_f2v_feat[row, col, :]], dim=-1)
+            edge_messages = self.fac2var_message_passing(raw_edge_messages)
 
-
-            edge_messages = self.var2fac_message_passing(edge_messages)
             node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
-            fac_hidden_states = self.var2fac_propagator(node_messages, fac_hidden_states)
+            fac2var_hidden_states = self.fac2var_propagator(node_messages, fac2var_hidden_states)
 
-        readout = self.readout(var_hidden_states)
+        col = []
+        for jj in range(num_fac2var_msg_nodes):
+            # msg_{fu -> v}
+            fu, v = fac2var_edge_index[jj]
+            col.append(v)
+        col = torch.LongTensor(col)
+
+        # then use scatter to get node beliefes
+        node_messages = scatter(fac2var_hidden_states, col, dim=0, reduce='sum')
+        readout = self.readout(node_messages)
         readout = self.softmax(readout)
         return readout
