@@ -68,14 +68,14 @@ class GGNN(nn.Module):
         self.fac2var_propagator = nn.GRUCell(self.message_dim, self.state_dim)
 
         self.var2fac_message_passing = nn.Sequential(
-            nn.Linear(self.state_dim+1, self.hidden_unit_message_dim),
+            nn.Linear(self.state_dim*2+3, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.message_dim),
         )
         self.fac2var_message_passing = nn.Sequential(
-            nn.Linear(self.state_dim+1, self.hidden_unit_message_dim),
+            nn.Linear(self.state_dim*2+3, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
             nn.ReLU(),
@@ -132,9 +132,9 @@ class GGNN(nn.Module):
 
 
         f2v_to_v2f_edge_index = []
-        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 1)
+        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 3)
         v2f_to_f2v_edge_index = []
-        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 1)
+        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 3)
 
         for ii in range(num_var2fac_msg_nodes):
             # ii is the index of var2fac_msg_node 
@@ -146,17 +146,22 @@ class GGNN(nn.Module):
                 fu, v = fac2var_edge_index[jj]
                 if u == v and fv != fu:
                     f2v_to_v2f_edge_index.append([jj, ii])
-                    f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item()])
+                    f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item(),
+                                                               J[factors[fu][0], factors[fu][1]].item(),
+                                                               J[factors[fv][0], factors[fv][1]].item()])
 
                 if fv == fu and u != v:
                     v2f_to_f2v_edge_index.append([ii, jj])
-                    v2f_to_f2v_feat[ii, jj, :] = torch.Tensor([J[factors[fu][0], factors[fu][1]].item()])
+                    v2f_to_f2v_feat[ii, jj, :] = torch.Tensor([J[factors[fu][0], factors[fu][1]].item(),
+                                                               b[u].item(),
+                                                               b[v].item()])
 
         f2v_to_v2f_edge_index = torch.LongTensor(f2v_to_v2f_edge_index).t()
         v2f_to_f2v_edge_index = torch.LongTensor(v2f_to_f2v_edge_index).t()
         # var2fac_edge_feat = torch.FloatTensor(var2fac_edge_feat).to(J.device)
         # fac2var_edge_feat  = torch.FloatTensor(fac2var_edge_feat).to(J.device)
 
+        # import ipdb;ipdb.set_trace()
         for step in range(self.n_steps):
             # f2v_to_v2f
             # calculate var2fac messages from fac2var message nodes
@@ -164,6 +169,7 @@ class GGNN(nn.Module):
             # col is the indices of var2fac message nodes
             row, col  = f2v_to_v2f_edge_index
             raw_edge_messages = torch.cat([fac2var_hidden_states[row, :],
+                                           var2fac_hidden_states[col, :],
                                            f2v_to_v2f_feat[row, col, :]], dim=-1)
             edge_messages = self.var2fac_message_passing(raw_edge_messages)
 
@@ -174,6 +180,7 @@ class GGNN(nn.Module):
             # calculate fac2var messages from var2fac messages
             row, col = v2f_to_f2v_edge_index
             raw_edge_messages = torch.cat([var2fac_hidden_states[row, :],
+                                           fac2var_hidden_states[col, :],
                                            v2f_to_f2v_feat[row, col, :]], dim=-1)
             edge_messages = self.fac2var_message_passing(raw_edge_messages)
 
