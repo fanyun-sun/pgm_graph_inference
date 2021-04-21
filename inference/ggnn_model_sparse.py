@@ -48,18 +48,21 @@ class GGNN(nn.Module):
     # unbatch version for debugging
     def forward(self, J, b):
         n_nodes = len(J)
+        row, col = torch.nonzero(J).t()
+        n_edges = row.shape[0]
         # initialize node embeddings to zeros
         hidden_states = torch.zeros(n_nodes, self.state_dim).to(J.device)
 
-        row, col = torch.nonzero(J).t()
+        edge_feat = torch.zeros(n_nodes, n_nodes, 3)
+        for i in range(n_edges):
+            # considering edge row[i], col[i]
+            edge_feat[row[i], col[i], :] = torch.FloatTensor([b[row[i]], b[col[i]], J[row[i], col[i]]])
 
         for step in range(self.n_steps):
             # (dim0*dim1, dim2)
             edge_messages = torch.cat([hidden_states[row,:],
                                        hidden_states[col,:],
-                                       J[row,col].unsqueeze(-1),
-                                       b[row].unsqueeze(-1),
-                                       b[col].unsqueeze(-1)], dim=-1)
+                                       edge_feat[row, col, :]], dim=-1)
 
             edge_messages = self.message_passing(edge_messages)
             node_messages = scatter(edge_messages, col, dim=0, reduce='sum')

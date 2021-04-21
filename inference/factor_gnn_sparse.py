@@ -45,7 +45,7 @@ class Special3dSpmm(nn.Module):
         idx0, idx1, idx2 = indices 
         # all have size #msg * msg_dim
         n_dim0, n_dim1, n_dim2 = shape
-        # msg_dim, n_nodes, n_nodes
+        # msg_dim, n_var_nodes, n_var_nodes
         out = []
         for i in range(n_dim0):
             idx = (idx0 == i)
@@ -64,21 +64,21 @@ class GGNN(nn.Module):
         self.hidden_unit_message_dim = hidden_unit_message_dim
         self.hidden_unit_readout_dim = hidden_unit_readout_dim
 
+        self.var2fac_propagator = nn.GRUCell(self.message_dim, self.state_dim)
+        self.fac2var_propagator = nn.GRUCell(self.message_dim, self.state_dim)
 
-        # nn1 = Sequential(Linear(2*self.state_dim+1+2, self.hidden_unit_message_dim),
-                         # ReLU(),
-                         # Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim))
-        # nn2 = Sequential(Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
-                         # ReLU(),
-                         # Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim))
-        # self.convs = [GINConv(nn1), GINConv(nn2)]
-
-        self.conv = GatedGraphConv(self.hidden_unit_message_dim, 2)
-
-        # self.propagator = nn.GRUCell(self.message_dim, self.state_dim)
-        self.message_passing = nn.Sequential(
+        self.var2fac_message_passing = nn.Sequential(
+            # nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
+            nn.Linear(2*self.state_dim+8, self.hidden_unit_message_dim),
+            # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
+            nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
-            # nn.Linear(2*self.state_dim+1+2, self.hidden_unit_message_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_unit_message_dim, self.message_dim),
+        )
+        self.fac2var_message_passing = nn.Sequential(
+            # nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
+            nn.Linear(2*self.state_dim+8, self.hidden_unit_message_dim),
             # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
@@ -107,44 +107,65 @@ class GGNN(nn.Module):
 
     # unbatch version for debugging
     def forward(self, J, b):
+        n_var_nodes = len(J)
         row, col = torch.nonzero(J).t()
-        n_nodes = len(J)
         n_edges = row.shape[0]
-        readout = torch.zeros(n_nodes)
-        # initialize node embeddings to zeros
-        variable_nodes_feat = torch.zeros(n_nodes, self.state_dim).to(J.device)
-        variable_nodes_feat[:, 0] = 0.
-        
-        factor_nodes_feat = torch.zeros(n_nodes + n_edges, self.state_dim)
-        factor_nodes_feat[:, 0] = 1.
-        factor_nodes_feat[:, 1] = J[row, col]
+        factors = [(row[i], col[i]) for i in range(len(row)) if row[i] < col[i]]
+        n_factors = len(factors)
+        assert n_factors == n_edges//2
 
-        edge_index = []
-        for i in range(n_node):
-            edge_index.append([i, n_nodes+i])
-            edge_index.append([n_nodes+i, i])
-        for i in range(n_edges):
-            # consider factor node idx: n_nodes+i
-            edge_index.append([n_nodes+i, row[i]])
-            edge_index.append([row[i], n_nodes+i])
-            edge_index.append([n_nodes+i, col[i]])
-            edge_index.append([col[i], n_nodes+i])
-        edge_index = torch.LongTensor(edge_index).t().to(J.device)
-        # import ipdb;ipdb.set_trace()
-        # for i in range(len(self.convs)):
-            # edge_messages = self.convs[i](edge_messages, edge_index)
-        edge_messages = self.conv(edge_messages, edge_index)
+        var_hidden_states = torch.zeros(n_var_nodes, self.state_dim).to(J.device)
+        fac_hidden_states = torch.zeros(n_factors,   self.state_dim).to(J.device)
 
-        edge_messages = self.message_passing(edge_messages).t().reshape(-1) # in message, (dim2*dim0*dim1)
-        edges = torch.nonzero(J.unsqueeze(-1).expand(-1, -1, self.message_dim).permute(2,0,1)).t()# (dim2*dim0*dim1) 
-        node_messages = self.spmm(edges,
-                                  edge_messages,
-                                  torch.Size([self.message_dim, n_nodes, n_nodes]),
-                                  torch.ones(size=(n_nodes,1)).to(J.device)) # (dim0, dim2)
+        var2fac_edge_index = []
+        var2fac_edge_feat = []
+        fac2var_edge_index = []
+        fac2var_edge_feat = []
 
-        readout = self.readout(node_messages)
-        # readout = self.readout(hidden_states)
+        for i in range(len(factors)):
+            # consider factor idx: n_var_nodes+i is connected to 
+            # node factors[i][0], and node factors[i][1]
+            u, v = factors[i]
+            var2fac_edge_index.append([u, i])
+            var2fac_edge_index.append([v, i])
+            fac2var_edge_index.append([i, u])
+            fac2var_edge_index.append([i, v])
+
+            var2fac_edge_feat.append([0., b[u], b[v], J[u,v]])
+            var2fac_edge_feat.append([0., b[u], b[v], J[u,v]])
+            fac2var_edge_feat.append([1., b[u], b[v], J[u,v]])
+            fac2var_edge_feat.append([1., b[u], b[v], J[u,v]])
+
+        var2fac_edge_index = torch.LongTensor(var2fac_edge_index).t().to(J.device)
+        var2fac_edge_feat = torch.FloatTensor(var2fac_edge_feat).to(J.device)
+        fac2var_edge_index = torch.LongTensor(fac2var_edge_index).t().to(J.device)
+        fac2var_edge_feat  = torch.FloatTensor(fac2var_edge_feat).to(J.device)
+
+        for step in range(self.n_steps):
+            # fac2var message passing
+            row, col = fac2var_edge_index
+            edge_messages = torch.cat([fac_hidden_states[row, :],
+                                       var_hidden_states[col, :],
+                                       fac2var_edge_feat[row, :],
+                                       fac2var_edge_feat[col, :]], dim=-1)
+
+
+            edge_messages = self.fac2var_message_passing(edge_messages)
+            node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
+            var_hidden_states = self.fac2var_propagator(node_messages, var_hidden_states)
+
+            # var2fac message passing
+            row, col = var2fac_edge_index
+            edge_messages = torch.cat([var_hidden_states[row, :],
+                                       fac_hidden_states[col, :],
+                                       var2fac_edge_feat[row, :],
+                                       var2fac_edge_feat[col, :]], dim=-1)
+
+
+            edge_messages = self.var2fac_message_passing(edge_messages)
+            node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
+            fac_hidden_states = self.var2fac_propagator(node_messages, fac_hidden_states)
+
+        readout = self.readout(var_hidden_states)
         readout = self.softmax(readout)
-        # readout = self.sigmoid(readout)
-        # readout = readout / torch.sum(readout,1).view(-1,1)
         return readout
