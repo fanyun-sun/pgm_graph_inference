@@ -7,6 +7,7 @@ Authors: kkorovin@cs.cmu.edu
 
 import numpy as np
 import networkx as nx
+from myconstants import ASYMMETRIC
 
 from graphical_models.data_structs import BinaryMRF
 
@@ -94,7 +95,8 @@ def construct_binary_mrf(struct, n_nodes, shuffle_nodes=True):
         BinaryMRF object
     """
     W = np.random.normal(0., 1., (n_nodes, n_nodes))
-    W = (W + W.T) / 2
+    if not ASYMMETRIC:
+        W = (W + W.T) / 2
     b = np.random.normal(0., 0.25**2, n_nodes)
     mask = generate_struct_mask(struct, n_nodes, shuffle_nodes)
     W *= mask

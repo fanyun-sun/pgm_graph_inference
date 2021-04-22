@@ -7,7 +7,7 @@ rm graphical_models/datasets/test/$1 -rf
 
 echo -e "\tCreating train data"
 python create_data.py --graph_struct $1 --size_range 9_9 \
-                      --num 10000 --data_mode train --mode marginal --algo exact \
+                      --num 1000 --data_mode train --mode marginal --algo exact \
                       --verbose True
 echo -e "\tCreating test data"
 python create_data.py --graph_struct $1 --size_range 9_9 \

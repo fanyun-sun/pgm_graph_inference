@@ -31,7 +31,7 @@ class VGNN_sparse(nn.Module):
 
         self.propagator = nn.GRUCell(self.message_dim, self.state_dim)
         self.message_passing = nn.Sequential(
-            nn.Linear(self.state_dim*2+3, self.hidden_unit_message_dim),
+            nn.Linear(self.state_dim*2+4, self.hidden_unit_message_dim),
             # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
@@ -67,23 +67,23 @@ class VGNN_sparse(nn.Module):
 
         hidden_states = torch.zeros(n_nodes+n_edges//2, self.state_dim).to(J.device)
 
-        edge_feat = torch.zeros(n_nodes+n_factors, n_nodes+n_factors, 3)
+        edge_feat = torch.zeros(n_nodes+n_factors, n_nodes+n_factors, 4)
         edge_index = []
         for i in range(len(factors)):
             # consider factor idx: n_nodes+i is connected to 
-            # node factors[i][0], and node factors[i][1]
             u, v = factors[i]
+            # node factors[i][0], and node factors[i][1]
             edge_index.append([u, n_nodes+i])
-            edge_feat[u, n_nodes+i, :] = torch.FloatTensor([0., b[u].item(), J[u,v].item()])
+            edge_feat[u, n_nodes+i, :] = torch.FloatTensor([0., b[u].item(), J[u,v].item(), J[v,u].item()])
 
             edge_index.append([v, n_nodes+i])
-            edge_feat[v, n_nodes+i, :] = torch.FloatTensor([0., b[v].item(), J[u,v].item()])
+            edge_feat[v, n_nodes+i, :] = torch.FloatTensor([0., b[v].item(), J[u,v].item(), J[v,u].item()])
 
             edge_index.append([n_nodes+i, u])
-            edge_feat[n_nodes+i, u, :] = torch.FloatTensor([1., b[u].item(), J[u,v].item()])
+            edge_feat[n_nodes+i, u, :] = torch.FloatTensor([1., b[u].item(), J[u,v].item(), J[v,u].item()])
 
             edge_index.append([n_nodes+i, v])
-            edge_feat[n_nodes+i, v, :] = torch.FloatTensor([1., b[v].item(), J[u,v].item()])
+            edge_feat[n_nodes+i, v, :] = torch.FloatTensor([1., b[v].item(), J[u,v].item(), J[v,u].item()])
 
         edge_index = torch.LongTensor(edge_index).t().to(J.device)
         edge_feat = torch.FloatTensor(edge_feat).to(J.device)

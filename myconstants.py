@@ -12,6 +12,8 @@ USE_SPARSE_GNN = True
 # DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DEVICE = torch.device('cpu')
 
+ASYMMETRIC = True
+
 n_hidden_states = 5
 message_dim_P = 5
 hidden_unit_message_dim = 64
