@@ -14,8 +14,6 @@ from graphical_models import BinaryMRF
 from graphical_models.data_gen import struct_names
 from myconstants import *
 
-from factor_graph import Variable, Factor, FactorGraph
-
 # Give specs in form structure->size
 # when used for train, the same is model name
 data_specs = {
@@ -64,32 +62,6 @@ data_specs.update({"nontrees_approx":
                         {"fc":  [100]}
                  })
 
-def to_factor_graph(graph):
-    n_nodes = graph.W.shape[0]
-    g = FactorGraph(silent=True)
-    variables = [Variable('{}'.format(i), 2) for i in range(n_nodes)]
-
-    number_of_factors = 0
-    for i in range(n_nodes):
-        factor_name =  'f{}'.format(i)
-        f_ = Factor(factor_name,
-                    np.array([np.exp(-graph.b[i]), np.exp(graph.b[i])]))
-        g.add(f_)
-        g.append(factor_name, variables[i])
-
-        for j in range(i+1, n_nodes):
-            if graph.W[i, j] != 0.:
-                factor_name = 'f{}{}'.format(i,j)
-                fij = Factor(factor_name, np.array([
-                    [np.exp(graph.W[i,j] + graph.W[j,i]), np.exp(-graph.W[i,j])],
-                    [np.exp(-graph.W[j, i]), np.exp(graph.W[i,j]+ graph.W[j, i])]
-                ]))
-                g.add(fij)
-                g.append(factor_name, variables[i])
-                g.append(factor_name, variables[j])
-                number_of_factors += 1
-    return g
-
 # Data loading ----------------------------------------------------------------
 def get_dataset_by_name(specs_name, data_dir, mode=None):
     """
@@ -124,12 +96,7 @@ def get_dataset_by_name(specs_name, data_dir, mode=None):
                     path_to_graph = os.path.join(directory, filename)
                     data_dict = np.load(path_to_graph, allow_pickle=True)[()]  # funny indexing
                     graph = BinaryMRF(data_dict["W"], data_dict["b"])
-                    if ASYMMETRIC:
-                        graph.factor_graph = to_factor_graph(graph)
-                        variables = graph.factor_graph.brute_force()
-                        marginals = np.array([var.bfmarginal for var in variables])
-                        data_dict["marginal"] = marginals
-
+                    graph.factor_graph = data_dict["factor_graph"]
                     graph.set_ground_truth(marginal_est=data_dict["marginal"],
                                            map_est=data_dict["map"])
                     graph.struct = struct

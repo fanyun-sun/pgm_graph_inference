@@ -8,7 +8,7 @@ import itertools
 import numpy as np
 from tqdm import tqdm
 from inference.core import Inference
-
+from myconstants import ASYMMETRIC
 
 class ExactInference(Inference):
     """ Special case BinaryMRF implementation """
@@ -30,6 +30,13 @@ class ExactInference(Inference):
         return probs
 
     def run_one(self, graph):
+
+        if ASYMMETRIC:
+            if self.mode == "marginal":
+                graph.factor_graph.brute_force()
+                marginals = np.array([graph.factor_graph.nodes['{}'.format(i)].bfmarginal for i in range(graph.W.shape[0])])
+                return marginals
+
         W = graph.W
         b = graph.b
         n = graph.n_nodes

@@ -110,13 +110,13 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     times["gnn"] = (time()-t0) / len(test_data)
 
     t0 = time()
-    use_tree_bp = False
+    bp_algo = "bp"
     if use_tree_bp:
-        bp = get_algorithm("tree_bp")(inference_mode)
-        bp_res = bp.run(test_data, verbose=False)
-    else:
-        bp = get_algorithm("bp")(inference_mode)
-        bp_res = bp.run(test_data, use_log=True, verbose=False)
+        bp_algo = "tree_bp"
+    if use_my_bp:
+        bp_algo = "mybp"
+    bp = get_algorithm(bp_algo)(inference_mode)
+    bp_res = bp.run(test_data, use_log=True, verbose=False)
     times["bp"] = (time()-t0) / len(test_data)
 
     # TODO! don't forget to uncomment

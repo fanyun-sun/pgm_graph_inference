@@ -78,7 +78,8 @@ def save_graphs(graphs, labels, args):
                                      graph.struct, str(graph.n_nodes))
             os.makedirs(directory, exist_ok=True)
             data = {"W": graph.W, "b": graph.b,
-                    "marginal": res_marginal, "map": res_map}
+                    "marginal": res_marginal, "map": res_map,
+                    "factor_graph": graph.factor_graph}
             #pprint(data)
 
             t = "_".join(str(time()).split("."))

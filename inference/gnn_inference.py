@@ -106,4 +106,3 @@ class GatedGNNInference(Inference):
                 mean_losses.append(ll_mean.item())
 
         self.history["loss"].append(np.mean(mean_losses))
-        print(self.history)

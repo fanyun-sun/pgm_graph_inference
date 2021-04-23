@@ -13,9 +13,11 @@ USE_SPARSE_GNN = True
 DEVICE = torch.device('cpu')
 
 ASYMMETRIC = True
+use_tree_bp = False
+use_my_bp = ASYMMETRIC
 
 n_hidden_states = 5
-message_dim_P = 5
+message_dim_P = 2
 hidden_unit_message_dim = 64
 hidden_unit_readout_dim = 64
 T = 10

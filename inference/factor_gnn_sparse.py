@@ -6,53 +6,8 @@ Authors: markcheu@andrew.cmu.edu, lingxiao@cmu.edu, kkorovin@cs.cmu.edu
 import torch
 import torch.nn as nn
 from torch_scatter import scatter
-from torch_geometric.nn.conv import GINConv, GatedGraphConv
-from torch.nn import Sequential, Linear, ReLU
-
-
-class SpecialSpmmFunction(torch.autograd.Function):
-    """Special function for only sparse region backpropagation layer."""
-    @staticmethod
-    def forward(ctx, indices, values, shape, b):
-        assert indices.requires_grad == False
-        a = torch.sparse_coo_tensor(indices, values, shape)
-        ctx.save_for_backward(a, b)
-        ctx.N = shape[0]
-        return torch.matmul(a, b)
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        a, b = ctx.saved_tensors
-        grad_values = grad_b = None
-        if ctx.needs_input_grad[1]:
-            grad_a_dense = grad_output.matmul(b.t())
-            edge_idx = a._indices()[0, :] * ctx.N + a._indices()[1, :]
-            grad_values = grad_a_dense.view(-1)[edge_idx]
-        if ctx.needs_input_grad[3]:
-            grad_b = a.t().matmul(grad_output)
-        return None, grad_values, None, grad_b
-
-class SpecialSpmm(nn.Module):
-    def forward(self, indices, values, shape, b):
-        return SpecialSpmmFunction.apply(indices, values, shape, b)
-
-class Special3dSpmm(nn.Module):
-    # sparse matrix a is (n_dim0, n_dim1, n_dim2)
-    # full matrix b is (n_dim2, n_dim3)
-    # perform a.matmul(b), output shape is (n_dim1, n_dim3, n_dim0)
-    # if n_dim3 ==1, output shape is (n_dim1, n_dim0)
-    def forward(self, indices, values, shape, b):
-        idx0, idx1, idx2 = indices 
-        # all have size #msg * msg_dim
-        n_dim0, n_dim1, n_dim2 = shape
-        # msg_dim, n_var_nodes, n_var_nodes
-        out = []
-        for i in range(n_dim0):
-            idx = (idx0 == i)
-            new_indices = torch.cat([idx1[idx].unsqueeze(0), idx2[idx].unsqueeze(0)], dim=0)
-            out.append(SpecialSpmmFunction.apply(new_indices, values[idx], shape[1:], b))
-        return torch.cat(out, dim=-1) # (n_dim1, n_dim0)
-
+# from torch_geometric.nn.conv import GINConv, GatedGraphConv
+# from torch.nn import Sequential, Linear, ReLU
 
 class GGNN(nn.Module):
     def __init__(self, state_dim, message_dim,hidden_unit_message_dim, hidden_unit_readout_dim, n_steps=10):
@@ -89,9 +44,7 @@ class GGNN(nn.Module):
             nn.Linear(self.hidden_unit_readout_dim, 2),
         )
 
-        #self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-        self.spmm = Special3dSpmm()
         self._initialization()
 
 
@@ -183,6 +136,19 @@ class GGNN(nn.Module):
                                            fac2var_hidden_states[col, :],
                                            v2f_to_f2v_feat[row, col, :]], dim=-1)
             edge_messages = self.fac2var_message_passing(raw_edge_messages)
+            norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
+            edge_messages = edge_messages.div(norm.expand_as(edge_messages))
+            for ii, jj in zip(row, col):
+                u, fv = var2fac_edge_index[ii]
+                fu, v = fac2var_edge_index[jj]
+                assert fu == fv and u != v
+                A, B = J[u, v].item(), J[v, u].item()
+                ftable = torch.Tensor([[A+B, -A],
+                                       [-B, A+B]])
+                edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
+                #or 
+                #edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(0)).sum(dim=-1)
+                # import ipdb;ipdb.set_trace()
 
             node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
             fac2var_hidden_states = self.fac2var_propagator(node_messages, fac2var_hidden_states)

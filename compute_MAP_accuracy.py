@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # print(data['true_labels'])
 
     MAP_true = np.array(data['true_labels']) > args.map_threshold
-    number_of_samples =MAP_true.shape[0]
+    number_of_samples = MAP_true.shape[0]
 
 
     GNN_true = np.array(data['gnn_labels']) > args.map_threshold
