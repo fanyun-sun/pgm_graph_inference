@@ -23,14 +23,14 @@ class GGNN(nn.Module):
         self.fac2var_propagator = nn.GRUCell(self.message_dim, self.state_dim)
 
         self.var2fac_message_passing = nn.Sequential(
-            nn.Linear(self.state_dim*2+1, self.hidden_unit_message_dim),
+            nn.Linear(self.state_dim*2+5, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.message_dim),
         )
         self.fac2var_message_passing = nn.Sequential(
-            nn.Linear(self.state_dim*2+2, self.hidden_unit_message_dim),
+            nn.Linear(self.state_dim*2+4, self.hidden_unit_message_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
             nn.ReLU(),
@@ -85,9 +85,9 @@ class GGNN(nn.Module):
 
 
         f2v_to_v2f_edge_index = []
-        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 1)
+        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 5)
         v2f_to_f2v_edge_index = []
-        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 2)
+        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 4)
 
         for ii in range(num_var2fac_msg_nodes):
             # ii is the index of var2fac_msg_node 
@@ -99,12 +99,18 @@ class GGNN(nn.Module):
                 fu, v = fac2var_edge_index[jj]
                 if u == v and fv != fu:
                     f2v_to_v2f_edge_index.append([jj, ii])
-                    f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item()])
+                    f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item(),
+                                                               J[factors[fu][0], factors[fu][1]].item(),
+                                                               J[factors[fu][1], factors[fu][0]].item(),
+                                                               J[factors[fv][0], factors[fv][1]].item(),
+                                                               J[factors[fv][1], factors[fv][0]].item()])
 
                 if fv == fu and u != v:
                     v2f_to_f2v_edge_index.append([ii, jj])
                     v2f_to_f2v_feat[ii, jj, :] = torch.Tensor([b[u].item(),
-                                                               b[v].item()])
+                                                               b[v].item(),
+                                                               J[factors[fu][0], factors[fu][1]].item(),
+                                                               J[factors[fu][1], factors[fu][0]].item()])
 
         f2v_to_v2f_edge_index = torch.LongTensor(f2v_to_v2f_edge_index).t()
         v2f_to_f2v_edge_index = torch.LongTensor(v2f_to_f2v_edge_index).t()
@@ -133,16 +139,16 @@ class GGNN(nn.Module):
                                            fac2var_hidden_states[col, :],
                                            v2f_to_f2v_feat[row, col, :]], dim=-1)
             edge_messages = self.fac2var_message_passing(raw_edge_messages)
-            norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
-            edge_messages = edge_messages.div(norm.expand_as(edge_messages))
-            for ii, jj in zip(row, col):
-                u, fv = var2fac_edge_index[ii]
-                fu, v = fac2var_edge_index[jj]
-                assert fu == fv and u != v
-                A, B = J[u, v].item(), J[v, u].item()
-                ftable = torch.Tensor([[A+B, -A],
-                                       [-B, A+B]])
-                edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
+            # norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
+            # edge_messages = edge_messages.div(norm.expand_as(edge_messages))
+            # for ii, jj in zip(row, col):
+                # u, fv = var2fac_edge_index[ii]
+                # fu, v = fac2var_edge_index[jj]
+                # assert fu == fv and u != v
+                # A, B = J[u, v].item(), J[v, u].item()
+                # ftable = torch.Tensor([[A+B, -A],
+                                       # [-B, A+B]])
+                # edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
                 #or 
                 #edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(0)).sum(dim=-1)
                 # import ipdb;ipdb.set_trace()
