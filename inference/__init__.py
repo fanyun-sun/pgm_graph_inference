@@ -14,17 +14,14 @@ from inference.bp_tree import TreeBP
 from inference.mybp import MyBeliefPropagation
 from inference.factor_gnn_inference import FactorGNNInference
 from inference.vanilla_gnn_inference import VanillaGNNInference
-from inference.mgnn_inference import MGNNInference
-
+from inference.maxbpnn import MaxBPNNInference
 
 def get_algorithm(algo_name):
     """ Returns a constructor """
-    if algo_name == 'mgnn_inference':
-        return MGNNInference
-    elif algo_name == 'vanilla_gnn_inference':
+    if algo_name == 'vanilla_gnn_inference':
         return VanillaGNNInference
     elif algo_name == "factor_gnn_inference":
-        return FactorGNNInference 
+        return FactorGNNInference
     elif algo_name == "mybp":
         return MyBeliefPropagation
     elif algo_name == "bp":
@@ -39,5 +36,7 @@ def get_algorithm(algo_name):
         return ExactInference
     elif algo_name == "mcmc":
         return GibbsSampling
+    elif algo_name == "maxbpnn_inference":
+        return MaxBPNNInference
     else:
         raise ValueError("Inference algorithm {} not supported".format(algo_name))
