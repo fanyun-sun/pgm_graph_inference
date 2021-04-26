@@ -59,7 +59,6 @@ class MyBeliefPropagation(Inference):
 
         n_nodes = graph.W.shape[0]
         g = graph.factor_graph
-        # import ipdb;ipdb.set_trace()
         g.compute_marginals(max_iter=200, tolerance=1e-20)
         results = probs = np.array([g.nodes['{}'.format(i)].marginal() for i in range(n_nodes)])
         # probs should be `

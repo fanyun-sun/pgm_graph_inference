@@ -24,28 +24,29 @@ class ExactInference(Inference):
             state_ind = np.array(state)
             state_val = 2 * state_ind - 1
             log_potentials[state] = state_val.dot(W.dot(state_val)) + b.dot(state_val)
+            # if np.array(state).sum() == 0:
+                # import ipdb;ipdb.set_trace()
         # probs = np.exp(log_potentials)
         # probs /= probs.sum()
-        probs = self._safe_norm_exp(log_potentials)
+        return log_potentials
         return probs
 
     def run_one(self, graph):
-
-        if ASYMMETRIC:
-            if self.mode == "marginal":
-                graph.factor_graph.brute_force()
-                marginals = np.array([graph.factor_graph.nodes['{}'.format(i)].bfmarginal for i in range(graph.W.shape[0])])
-                return marginals
 
         W = graph.W
         b = graph.b
         n = graph.n_nodes
 
+        if ASYMMETRIC:
+            if self.mode == "marginal":
+                graph.factor_graph.brute_force()
+                marginals = np.array([graph.factor_graph.nodes['{}'.format(i)].bfmarginal for i in range(n)])
+                return marginals
+
         # compute joint probabilities
         # array of shape [2,...,2]
         probs = self.compute_probs(W, b, n)
-        # print("M1:", probs[0, :, :].sum(), probs[1, :, :].sum())
-        # print("M2:", probs[:, 0, :].sum(), probs[:, 1, :].sum())
+        probs = self._safe_norm_exp(probs)
 
         if self.mode == "marginal":
             # select one state and compute marginal:

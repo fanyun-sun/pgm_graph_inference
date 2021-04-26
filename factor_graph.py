@@ -244,6 +244,7 @@ class FactorGraph:
     variable node is severed (although it remains in the graph
     to give a uniform marginal when asked).
     """
+        assert False
         node = self.nodes[name]
         assert isinstance(node, Variable)
         assert node.size >= state
@@ -308,6 +309,7 @@ class FactorGraph:
         # for inbox clearance
         for node in self.nodes.values():
             node.inbox.clear()
+            node.bfmarginal = None
         # for testing convergence
         cur_marginals = self.export_marginals()
         # initialization
@@ -367,11 +369,19 @@ class FactorGraph:
     - iterate through variables
       - for each variable sum over all other variables
     """
+        def _safe_norm_exp(logit):
+            logit -= np.max(logit, keepdims=True)
+            prob = np.exp(logit)
+            prob /= prob.sum(keepdims=True)
+            return prob
+
         variables = [v for v in self.nodes.values() if isinstance(v, Variable)]
+        for v in variables: assert int(v.name) == variables.index(v)
 
         var_dims = [v.size for v in variables]
         N = len(var_dims)
         assert N < 32, "max number of vars for brute force is 32 (numpy's matrix dim limit)"
+
         log_joint_acc = np.zeros(var_dims)
         for factor in [f for f in self.nodes.values()
                        if isinstance(f, Factor)]:
@@ -382,14 +392,42 @@ class FactorGraph:
                 factor_coord = tuple([joint_coord[i] for i in which_dims])
                 factor_acc[joint_coord] *= factor.p[factor_coord]
             log_joint_acc += np.log(factor_acc)
-        log_joint_acc -= np.max(log_joint_acc)  # to avoid numerical issues
-        joint_acc = np.exp(log_joint_acc) / np.sum(np.exp(log_joint_acc))
-        # compute marginals
+
+        joint_acc = _safe_norm_exp(log_joint_acc)
         for i, variable in enumerate(variables):
-            sum_dims = [j for j in range(N) if not j == i]
-            sum_dims.sort(reverse=True)
-            collapsing_marginal = joint_acc
-            for j in sum_dims:
-                collapsing_marginal = collapsing_marginal.sum(j)  # lose 1 dim
+            axes = tuple(j for j in range(N) if j != i)
+            collapsing_marginal = joint_acc.sum(axis=axes)
+
             variable.bfmarginal = collapsing_marginal
         return variables
+
+
+def to_factor_graph(graph):
+    n_nodes = graph.W.shape[0]
+    g = FactorGraph(silent=True)
+    variables = [Variable('{}'.format(i), 2) for i in range(n_nodes)]
+
+    number_of_factors = 0
+    for i in range(n_nodes):
+        factor_name =  'f{}'.format(i)
+        f_ = Factor(factor_name, np.array([np.exp(-graph.b[i]), np.exp(graph.b[i])]))
+        g.add(f_)
+        g.append(factor_name, variables[i])
+        number_of_factors += 1
+
+    for i in range(n_nodes):
+        for j in range(i+1, n_nodes):
+            if graph.W[i, j] != 0.:
+                factor_name = 'f{}{}'.format(i,j)
+                fij = Factor(factor_name, np.array([
+                    [np.exp(graph.W[i,j] + graph.W[j,i]), np.exp(-2*graph.W[i,j])],
+                    [np.exp(-2*graph.W[j,i]), np.exp(graph.W[i,j]+ graph.W[j, i])],
+                ]))
+                g.add(fij)
+                g.append(factor_name, variables[i])
+                g.append(factor_name, variables[j])
+                # g.append(factor_name, variables[i])
+                # g.append(factor_name, variables[j])
+                number_of_factors += 1
+    assert number_of_factors == 9 + 12
+    return g
