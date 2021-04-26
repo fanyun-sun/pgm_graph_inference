@@ -56,6 +56,7 @@ class GGNN(nn.Module):
 
     # unbatch version for debugging
     def forward(self, J, b):
+        device = J.device
         n_var_nodes = len(J)
         row, col = torch.nonzero(J).t()
         n_edges = row.shape[0]
@@ -72,7 +73,7 @@ class GGNN(nn.Module):
             var2fac_edge_index.append([v, i])
         # var2fac_edge_index = torch.LongTensor(var2fac_edge_index).t().to(J.device)
         num_var2fac_msg_nodes = len(var2fac_edge_index)
-        var2fac_hidden_states = torch.zeros(num_var2fac_msg_nodes, self.state_dim)
+        var2fac_hidden_states = torch.zeros(num_var2fac_msg_nodes, self.state_dim).to(device)
 
         fac2var_edge_index = []
         for i in range(len(factors)):
@@ -81,13 +82,13 @@ class GGNN(nn.Module):
             fac2var_edge_index.append([i, u])
             fac2var_edge_index.append([i, v])
         num_fac2var_msg_nodes = len(fac2var_edge_index)
-        fac2var_hidden_states = torch.zeros(num_fac2var_msg_nodes, self.state_dim)
+        fac2var_hidden_states = torch.zeros(num_fac2var_msg_nodes, self.state_dim).to(device)
 
 
         f2v_to_v2f_edge_index = []
-        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 1)
         v2f_to_f2v_edge_index = []
-        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 2)
+        f2v_to_v2f_feat = torch.zeros(num_fac2var_msg_nodes, num_var2fac_msg_nodes, 1).to(device)
+        v2f_to_f2v_feat = torch.zeros(num_var2fac_msg_nodes, num_fac2var_msg_nodes, 2).to(device)
 
         for ii in range(num_var2fac_msg_nodes):
             # ii is the index of var2fac_msg_node 
@@ -106,8 +107,8 @@ class GGNN(nn.Module):
                     v2f_to_f2v_feat[ii, jj, :] = torch.Tensor([b[u].item(),
                                                                b[v].item()])
 
-        f2v_to_v2f_edge_index = torch.LongTensor(f2v_to_v2f_edge_index).t()
-        v2f_to_f2v_edge_index = torch.LongTensor(v2f_to_f2v_edge_index).t()
+        f2v_to_v2f_edge_index = torch.LongTensor(f2v_to_v2f_edge_index).t().to(device)
+        v2f_to_f2v_edge_index = torch.LongTensor(v2f_to_f2v_edge_index).t().to(device)
         # var2fac_edge_feat = torch.FloatTensor(var2fac_edge_feat).to(J.device)
         # fac2var_edge_feat  = torch.FloatTensor(fac2var_edge_feat).to(J.device)
 
@@ -140,8 +141,8 @@ class GGNN(nn.Module):
                 fu, v = fac2var_edge_index[jj]
                 assert fu == fv and u != v
                 A, B = J[u, v].item(), J[v, u].item()
-                ftable = torch.Tensor([[A+B, -A],
-                                       [-B, A+B]])
+                ftable = torch.Tensor([[A+B, -2*A],
+                                       [-2*B, A+B]]).to(device)
                 edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
                 #or 
                 #edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(0)).sum(dim=-1)
@@ -155,7 +156,7 @@ class GGNN(nn.Module):
             # msg_{fu -> v}
             fu, v = fac2var_edge_index[jj]
             col.append(v)
-        col = torch.LongTensor(col)
+        col = torch.LongTensor(col).to(device)
 
         # then use scatter to get node beliefes
         node_messages = scatter(fac2var_hidden_states, col, dim=0, reduce='sum')

@@ -376,7 +376,7 @@ class FactorGraph:
             return prob
 
         variables = [v for v in self.nodes.values() if isinstance(v, Variable)]
-        for v in variables: assert int(v.name) == variables.index(v)
+        # for v in variables: assert int(v.name) == variables.index(v)
 
         var_dims = [v.size for v in variables]
         N = len(var_dims)
@@ -431,3 +431,43 @@ def to_factor_graph(graph):
                 number_of_factors += 1
     assert number_of_factors == 9 + 12
     return g
+
+if __name__ == '__main__':
+
+    g = FactorGraph(silent=True) # init the graph without message printouts
+    x1 = Variable('x1', 2) # init a variable with 2 states
+    x2 = Variable('x2', 2) # init a variable with 3 states
+    x3 = Variable('x3', 2) # init a variable with 3 states
+    f12 = Factor('f12', np.array([
+      [0.8,2],
+      [0.2,8],
+    ])) # create a factor, node potential for p(x1 | x2)
+    # connect the parents to their children
+    g.add(f12)
+    g.append('f12', x2) # order must be the same as dimensions in factor potential!
+    g.append('f12', x1) # note: f12 potential's shape is (3,2), i.e. (x2,x1)
+
+    f12 = Factor('f23', np.array([
+      [8,1],
+      [2,0.8],
+    ])) # create a factor, node potential for p(x1 | x2)
+    # connect the parents to their children
+    g.add(f12)
+    g.append('f23', x2) # order must be the same as dimensions in factor potential!
+    g.append('f23', x3) # note: f12 potential's shape is (3,2), i.e. (x2,x1)
+
+    f12 = Factor('f31', np.array([
+      [0.8,1],
+      [2, .8],
+    ])) # create a factor, node potential for p(x1 | x2)
+    # connect the parents to their children
+    g.add(f12)
+    g.append('f31', x3) # order must be the same as dimensions in factor potential!
+    g.append('f31', x1) # note: f12 potential's shape is (3,2), i.e. (x2,x1)
+
+    g.brute_force()
+    print(g.nodes['x1'].bfmarginal)
+    print(g.nodes['x2'].bfmarginal)
+    g.compute_marginals()
+    print(g.nodes['x1'].marginal())
+    print(g.nodes['x2'].marginal())

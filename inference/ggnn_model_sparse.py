@@ -53,7 +53,7 @@ class GGNN(nn.Module):
         # initialize node embeddings to zeros
         hidden_states = torch.zeros(n_nodes, self.state_dim).to(J.device)
 
-        edge_feat = torch.zeros(n_nodes, n_nodes, 3)
+        edge_feat = torch.zeros(n_nodes, n_nodes, 3).to(J.device)
         for i in range(n_edges):
             # considering edge row[i], col[i]
             edge_feat[row[i], col[i], :] = torch.FloatTensor([b[row[i]], b[col[i]], J[row[i], col[i]]])
