@@ -3,6 +3,7 @@ Defines GGNN model based on the PGM by GNN workshop paper.
 Authors: markcheu@andrew.cmu.edu, lingxiao@cmu.edu, kkorovin@cs.cmu.edu
 """
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch_scatter import scatter
@@ -94,10 +95,12 @@ class GGNN(nn.Module):
             # ii is the index of var2fac_msg_node 
             # considering msg_{u -> fv}
             u, fv = var2fac_edge_index[ii]
+            assert u in factors[fv]
             for jj in range(num_fac2var_msg_nodes):
                 # jj is the index of fac2var msg node
                 # considering msg_{fu -> v}
                 fu, v = fac2var_edge_index[jj]
+                assert v in factors[fu]
                 if u == v and fv != fu:
                     f2v_to_v2f_edge_index.append([jj, ii])
                     f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item()])
@@ -134,15 +137,20 @@ class GGNN(nn.Module):
                                            fac2var_hidden_states[col, :],
                                            v2f_to_f2v_feat[row, col, :]], dim=-1)
             edge_messages = self.fac2var_message_passing(raw_edge_messages)
+
             norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
             edge_messages = edge_messages.div(norm.expand_as(edge_messages))
+
             for ii, jj in zip(row, col):
                 u, fv = var2fac_edge_index[ii]
                 fu, v = fac2var_edge_index[jj]
                 assert fu == fv and u != v
+                u, v = factors[fu][0], factors[fu][1]
                 A, B = J[u, v].item(), J[v, u].item()
                 ftable = torch.Tensor([[A+B, -2*A],
-                                       [-2*B, A+B]]).to(device)
+                                       [-2*B,A+B]]).to(device)
+                # ftable = torch.Tensor([[np.exp(A+B), np.exp(-2*A)],
+                                       # [np.exp(-2*B),np.exp(A+B)]]).to(device)
                 edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
                 #or 
                 #edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(0)).sum(dim=-1)

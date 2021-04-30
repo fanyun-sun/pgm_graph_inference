@@ -6,8 +6,8 @@ Authors: markcheu@andrew.cmu.edu, lingxiao@cmu.edu, kkorovin@cs.cmu.edu
 import torch
 import torch.nn as nn
 from torch_scatter import scatter
-from torch.nn import Sequential, Linear, ReLU
-from torch_geometric.nn.conv import GINConv, GatedGraphConv
+# from torch.nn import Sequential, Linear, ReLU
+# from torch_geometric.nn.conv import GINConv, GatedGraphConv
 
 class VGNN_sparse(nn.Module):
     def __init__(self, state_dim, message_dim,hidden_unit_message_dim, hidden_unit_readout_dim, n_steps=10):
@@ -66,6 +66,8 @@ class VGNN_sparse(nn.Module):
         assert n_factors == n_edges//2
 
         hidden_states = torch.zeros(n_nodes+n_edges//2, self.state_dim).to(J.device)
+        hidden_states[:n_nodes, 0] = 0.
+        hidden_states[n_nodes:, 0] = 1.
 
         edge_feat = torch.zeros(n_nodes+n_factors, n_nodes+n_factors, 4)
         edge_index = []
@@ -78,12 +80,14 @@ class VGNN_sparse(nn.Module):
 
             edge_index.append([v, n_nodes+i])
             edge_feat[v, n_nodes+i, :] = torch.FloatTensor([0., b[v].item(), J[u,v].item(), J[v,u].item()])
+            # edge_feat[v, n_nodes+i, :] = torch.FloatTensor([0., b[v].item(), J[v,u].item(), J[u,v].item()])
 
             edge_index.append([n_nodes+i, u])
             edge_feat[n_nodes+i, u, :] = torch.FloatTensor([1., b[u].item(), J[u,v].item(), J[v,u].item()])
 
             edge_index.append([n_nodes+i, v])
             edge_feat[n_nodes+i, v, :] = torch.FloatTensor([1., b[v].item(), J[u,v].item(), J[v,u].item()])
+            # edge_feat[n_nodes+i, v, :] = torch.FloatTensor([1., b[v].item(), J[v,u].item(), J[u,v].item()])
 
         edge_index = torch.LongTensor(edge_index).t().to(J.device)
         edge_feat = torch.FloatTensor(edge_feat).to(J.device)

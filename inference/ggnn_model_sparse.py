@@ -19,7 +19,7 @@ class GGNN(nn.Module):
 
         self.propagator = nn.GRUCell(self.message_dim, self.state_dim)
         self.message_passing = nn.Sequential(
-            nn.Linear(2*self.state_dim+1+2, self.hidden_unit_message_dim),
+            nn.Linear(2*self.state_dim+1+3, self.hidden_unit_message_dim),
             # 2 for each hidden state, 1 for J[i,j], 1 for b[i] and 1 for b[j]
             nn.ReLU(),
             nn.Linear(self.hidden_unit_message_dim, self.hidden_unit_message_dim),
@@ -53,10 +53,10 @@ class GGNN(nn.Module):
         # initialize node embeddings to zeros
         hidden_states = torch.zeros(n_nodes, self.state_dim).to(J.device)
 
-        edge_feat = torch.zeros(n_nodes, n_nodes, 3).to(J.device)
+        edge_feat = torch.zeros(n_nodes, n_nodes, 4).to(J.device)
         for i in range(n_edges):
             # considering edge row[i], col[i]
-            edge_feat[row[i], col[i], :] = torch.FloatTensor([b[row[i]], b[col[i]], J[row[i], col[i]]])
+            edge_feat[row[i], col[i], :] = torch.FloatTensor([b[row[i]], b[col[i]], J[row[i], col[i]], J[col[i], row[i]]])
 
         for step in range(self.n_steps):
             # (dim0*dim1, dim2)

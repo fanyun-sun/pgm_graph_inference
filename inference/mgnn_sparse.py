@@ -93,24 +93,33 @@ class GGNN(nn.Module):
             # ii is the index of var2fac_msg_node 
             # considering msg_{u -> fv}
             u, fv = var2fac_edge_index[ii]
+            assert u in factors[fv]
             for jj in range(num_fac2var_msg_nodes):
                 # jj is the index of fac2var msg node
                 # considering msg_{fu -> v}
                 fu, v = fac2var_edge_index[jj]
+                assert v in factors[fu]
                 if u == v and fv != fu:
                     f2v_to_v2f_edge_index.append([jj, ii])
+                    tmp0 = 0
+                    tmp1 = 0
+                    # tmp0 = int(v == factors[fu][0])
+                    # tmp1 = int(u == factors[fv][0])
                     f2v_to_v2f_feat[jj, ii, :] = torch.Tensor([b[u].item(),
-                                                               J[factors[fu][0], factors[fu][1]].item(),
-                                                               J[factors[fu][1], factors[fu][0]].item(),
-                                                               J[factors[fv][0], factors[fv][1]].item(),
-                                                               J[factors[fv][1], factors[fv][0]].item()])
+                                                               J[factors[fu][tmp0], factors[fu][1-tmp0]].item(),
+                                                               J[factors[fu][1-tmp0], factors[fu][tmp0]].item(),
+                                                               J[factors[fv][tmp1], factors[fv][1-tmp1]].item(),
+                                                               J[factors[fv][1-tmp1], factors[fv][tmp1]].item()])
 
                 if fv == fu and u != v:
                     v2f_to_f2v_edge_index.append([ii, jj])
+                    tmp0 = 0
+                    # tmp0 = int(u == factors[fu][0])
+                    assert factors[fu] == (u,v) or factors[fv] == (v,u)
                     v2f_to_f2v_feat[ii, jj, :] = torch.Tensor([b[u].item(),
                                                                b[v].item(),
-                                                               J[factors[fu][0], factors[fu][1]].item(),
-                                                               J[factors[fu][1], factors[fu][0]].item()])
+                                                               J[factors[fu][tmp0], factors[fu][1-tmp0]].item(),
+                                                               J[factors[fu][1-tmp0], factors[fu][tmp0]].item()])
 
         f2v_to_v2f_edge_index = torch.LongTensor(f2v_to_v2f_edge_index).t().to(device)
         v2f_to_f2v_edge_index = torch.LongTensor(v2f_to_f2v_edge_index).t().to(device)
