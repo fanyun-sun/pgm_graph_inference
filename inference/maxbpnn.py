@@ -171,12 +171,15 @@ def build_FactorGraph_from_BMRF(J, b):
     return factor_graph
 
 class MaxBPNN(nn.Module):
-    def __init__(self, damping=0., normalization_flag=True,
+    def __init__(self, mode='map', damping=0., normalization_flag=True,
                  hidden_size=64, batch_norm_flag=True,
                  maxiter=10000, tol=1e-9,
                  src_names=['diff_f2v_messages', 'diff_beliefs'],):
         super(MaxBPNN, self).__init__()
+        if mode not in ["marginal", "map"]:
+            raise ValueError("Inference mode {} not supported".format(mode))
         self.maxbpnn_model = ScheduleMaxBPV2(
+            mode = mode,
             damping=damping, normalization_flag=normalization_flag,
             hidden_size=hidden_size, batch_norm_flag=batch_norm_flag,
             maxiter=maxiter, tol=tol,
@@ -194,6 +197,7 @@ class MaxBPNNInference(GatedGNNInference):
                 n_steps=10, load_path=None, sparse=True):
         Inference.__init__(self, mode)
         self.model = MaxBPNN(
+            mode=mode,
             hidden_size=hidden_unit_message_dim,
             damping=0.5, normalization_flag=True, #@hao: These four hyper-parameters are also important for the performance. Espeically the damping and the normalization flag.
             batch_norm_flag=True, maxiter=10,     #@hao: Probably we should modify the interface in train.py to tune these hyper-parameters?
@@ -855,8 +859,11 @@ class MaxBPLayer(nn.Module):
     '''
     Belief Propagation imitating the libdai implementation
     '''
-    def __init__(self, ):
+    def __init__(self, mode='map'):
         super(MaxBPLayer, self).__init__()
+        if mode not in ["marginal", "map"]:
+            raise ValueError("Inference mode {} not supported".format(mode))
+        self.mode = mode
     def cal_new_messages(
         self, factor_graph, prv_factorToVar_messages,
         normalization_flag, damping,
@@ -866,11 +873,18 @@ class MaxBPLayer(nn.Module):
         mapped_prv_factor_beliefs = prv_factor_beliefs[factor_graph.facToVar_edge_idx[0]] #map node beliefs to edges
         new_factorToVar_messages = mapped_prv_factor_beliefs-expanded_prv_varToFactor_messages #avoid double counting
         new_factorToVar_messages = new_factorToVar_messages - torch.max(new_factorToVar_messages)
-        new_factorToVar_messages = scatter_max(
-            src=new_factorToVar_messages.reshape([new_factorToVar_messages.numel()])[factor_graph.facStates_to_varIdx>=0],
-            index=factor_graph.facStates_to_varIdx[factor_graph.facStates_to_varIdx>=0],
-            dim_size=prv_factorToVar_messages.size(0)*factor_graph.var_cardinality[0].item() + 1
-        )[0]
+        if self.mode=='map':
+            new_factorToVar_messages = scatter_max(
+                src=new_factorToVar_messages.reshape([new_factorToVar_messages.numel()])[factor_graph.facStates_to_varIdx>=0],
+                index=factor_graph.facStates_to_varIdx[factor_graph.facStates_to_varIdx>=0],
+                dim_size=prv_factorToVar_messages.size(0)*factor_graph.var_cardinality[0].item() + 1
+            )[0]
+        else:
+            new_factorToVar_messages = scatter_sum(
+                src=new_factorToVar_messages.reshape([new_factorToVar_messages.numel()])[factor_graph.facStates_to_varIdx>=0],
+                index=factor_graph.facStates_to_varIdx[factor_graph.facStates_to_varIdx>=0],
+                dim_size=prv_factorToVar_messages.size(0)*factor_graph.var_cardinality[0].item() + 1
+            )
         new_factorToVar_messages = new_factorToVar_messages[:-1].reshape(
             prv_factorToVar_messages.shape
         )
@@ -1049,9 +1063,10 @@ class GBatchNorm1d(nn.BatchNorm1d):
         return normed_x
 
 class ScheduleMaxBPLayerV2(MaxBPLayer):
-    def __init__(self, src_names=['diff_f2v_messages', 'diff_beliefs'],
+    def __init__(self, mode='map',
+                 src_names=['diff_f2v_messages', 'diff_beliefs'],
                  hidden_size=64, batch_norm_flag=True, damping=0.):
-        super(ScheduleMaxBPLayerV2, self).__init__()
+        super(ScheduleMaxBPLayerV2, self).__init__(mode=mode)
         self.src_names = src_names
         self.batch_norm_flag = batch_norm_flag
 
@@ -1136,9 +1151,13 @@ class ScheduleMaxBPLayerV2(MaxBPLayer):
         factorToVar_messages = torch.clamp(factorToVar_messages, min=LN_ZERO)
         return factorToVar_messages
 class ScheduleMaxBPV2(_FixedIterMaxBP):
-    def __init__(self, damping=0., normalization_flag=True, maxiter=10000, tol=1e-9,
+    def __init__(self, mode='map',
+                 damping=0., normalization_flag=True, maxiter=10000, tol=1e-9,
                  src_names=['diff_f2v_messages', 'diff_beliefs'],
                  hidden_size=64, batch_norm_flag=True,):
+        if mode not in ["marginal", "map"]:
+            raise ValueError("Inference mode {} not supported".format(mode))
+        self.mode = mode
         self.src_names = src_names
         self.hidden_size = hidden_size
         self.batch_norm_flag = batch_norm_flag
@@ -1151,6 +1170,6 @@ class ScheduleMaxBPV2(_FixedIterMaxBP):
         return ScheduleMaxBPLayerV2(
             src_names=self.src_names, hidden_size=self.hidden_size,
             batch_norm_flag=self.batch_norm_flag,
-            damping = self.damping,
+            damping = self.damping, mode=self.mode,
         )
 
