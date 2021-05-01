@@ -138,25 +138,27 @@ class GGNN(nn.Module):
                                            v2f_to_f2v_feat[row, col, :]], dim=-1)
             edge_messages = self.fac2var_message_passing(raw_edge_messages)
 
-            norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
-            edge_messages = edge_messages.div(norm.expand_as(edge_messages))
+            # norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
+            # edge_messages = edge_messages.div(norm.expand_as(edge_messages))
 
+            new_edge_messages = [None for _ in range(row.shape[0])]
             for ii, jj in zip(row, col):
                 u, fv = var2fac_edge_index[ii]
                 fu, v = fac2var_edge_index[jj]
                 assert fu == fv and u != v
-                u, v = factors[fu][0], factors[fu][1]
+                # u, v = factors[fu][0], factors[fu][1]
                 A, B = J[u, v].item(), J[v, u].item()
-                ftable = torch.Tensor([[A+B, -2*A],
-                                       [-2*B,A+B]]).to(device)
+                ftable = torch.Tensor([[A+B,  -2*A],
+                                       [-2*B, A+B]]).to(device)
                 # ftable = torch.Tensor([[np.exp(A+B), np.exp(-2*A)],
                                        # [np.exp(-2*B),np.exp(A+B)]]).to(device)
-                edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
+                new_edge_messages[ii] = torch.logsumexp(ftable + edge_messages[ii, :].unsqueeze(-1), dim=0)
                 #or 
                 #edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(0)).sum(dim=-1)
                 # import ipdb;ipdb.set_trace()
 
-            node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
+            new_edge_messages = torch.stack(new_edge_messages)
+            node_messages = scatter(new_edge_messages, col, dim=0, reduce='sum')
             fac2var_hidden_states = self.fac2var_propagator(node_messages, fac2var_hidden_states)
 
         col = []
