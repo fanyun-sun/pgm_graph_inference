@@ -69,7 +69,16 @@ def build_FactorGraph_from_BMRF(J, b):
     max_factor_dimension = 0
     all_factor_dimensions = [] #all_factor_dimensions[i] is the number of variables in the ith factor
 
-    row, col = torch.nonzero(J).t()
+    trow, tcol = torch.nonzero(J).t()
+    row, col = [], []
+    for r,c in zip(trow, tcol):
+        if r.item() <= c.item():
+            row.append(r)
+            col.append(c)
+    row = torch.LongTensor(row)
+    col = torch.LongTensor(col)
+    assert row.shape[0] == col.shape[0] and row.shape[0] == trow.shape[0]//2
+
     binary_factor_count, unary_factor_count = row.shape[0], variable_count
     factor_count = binary_factor_count+unary_factor_count
     for factor_idx in range(unary_factor_count):
@@ -112,9 +121,13 @@ def build_FactorGraph_from_BMRF(J, b):
         factorToVar_double_list.append(var_indices)
 
         factor_entry_count = 4
-        tmp_local_potential = J[var_indices]
-        log_factor_entries = [tmp_local_potential, -tmp_local_potential,
-                              -tmp_local_potential, tmp_local_potential]
+        u, v = var_indices[0].item(), var_indices[1].item()
+        A, B = J[u,v], J[v,u]
+        # tmp_local_potential = J[var_indices]
+        # log_factor_entries = [tmp_local_potential, -tmp_local_potential,
+                              # -tmp_local_potential, tmp_local_potential]
+        log_factor_entries = [A+B, -2*A,
+                              -2*B, A+B]
         assert(factor_entry_count == len(log_factor_entries))
         factor_var_cardinalities = [variable_cardinalities[var_idx] for var_idx in var_indices]
         log_factor_potential = torch.tensor(log_factor_entries).reshape(factor_var_cardinalities)
@@ -199,8 +212,8 @@ class MaxBPNNInference(GatedGNNInference):
         self.model = MaxBPNN(
             mode=mode,
             hidden_size=hidden_unit_message_dim,
-            damping=0.5, normalization_flag=True, #@hao: These four hyper-parameters are also important for the performance. Espeically the damping and the normalization flag.
-            batch_norm_flag=True, maxiter=10,     #@hao: Probably we should modify the interface in train.py to tune these hyper-parameters?
+            damping=.5, normalization_flag=True, #@hao: These four hyper-parameters are also important for the performance. Espeically the damping and the normalization flag.
+            batch_norm_flag=False, maxiter=200,     #@hao: Probably we should modify the interface in train.py to tune these hyper-parameters?
         )
         if load_path is not None:
             self.model.load_state_dict(

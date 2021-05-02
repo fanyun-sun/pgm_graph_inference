@@ -120,21 +120,24 @@ if __name__ == "__main__":
     else:
         criterion = CrossEntropyMAPComputer()
 
-    best_epoch = -1
-    best_loss = 1e9
-    for epoch in range(args.epochs):
-        gnn_inference.train(dataset, optimizer, criterion, DEVICE)
-        loss = gnn_inference.history["loss"][-1]
+    gnn_inference.save_model(model_path)
+    print("Model saved in {}".format(model_path))
 
-        if loss < best_loss:
-            best_loss = loss
-            best_epoch = epoch
-            gnn_inference.save_model(model_path)
-            print('Epoch {}: loss {}'.format(epoch, loss))
-            print("Model saved in {}".format(model_path))
+    # best_epoch = -1
+    # best_loss = 1e9
+    # for epoch in range(args.epochs):
+        # gnn_inference.train(dataset, optimizer, criterion, DEVICE)
+        # loss = gnn_inference.history["loss"][-1]
 
-        if epoch - best_epoch > 4:
-            break
+        # if loss < best_loss:
+            # best_loss = loss
+            # best_epoch = epoch
+            # gnn_inference.save_model(model_path)
+            # print('Epoch {}: loss {}'.format(epoch, loss))
+            # print("Model saved in {}".format(model_path))
+
+        # if epoch - best_epoch > 4:
+            # break
 
     # losses = gnn_inference.history["loss"]
     # plt.plot(range(1, len(losses)+1), losses)

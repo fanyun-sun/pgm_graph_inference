@@ -15,7 +15,6 @@ import argparse
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 
 font = {'family' : 'normal',
         'weight' : 'bold',
@@ -101,6 +100,7 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
                                     message_dim_P,hidden_unit_message_dim,
                                     hidden_unit_readout_dim, T,
                                     model_load_path, USE_SPARSE_GNN)
+    print('model loaded from {}'.format(model_load_path))
 
     # run inference on test
     times = {}
