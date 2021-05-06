@@ -29,7 +29,6 @@ class ExactInference(Inference):
         # probs = np.exp(log_potentials)
         # probs /= probs.sum()
         return log_potentials
-        return probs
 
     def run_one(self, graph):
 
@@ -41,7 +40,7 @@ class ExactInference(Inference):
             if self.mode == "marginal":
                 graph.factor_graph.brute_force()
                 marginals = np.array([graph.factor_graph.nodes['{}'.format(i)].bfmarginal for i in range(n)])
-                return marginals
+                print(marginals)
 
         # compute joint probabilities
         # array of shape [2,...,2]

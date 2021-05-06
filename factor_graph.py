@@ -429,7 +429,9 @@ def to_factor_graph(graph):
                 # g.append(factor_name, variables[i])
                 # g.append(factor_name, variables[j])
                 number_of_factors += 1
-    assert number_of_factors == 9 + 12
+
+    m = int(np.sqrt(n_nodes))
+    assert number_of_factors == n_nodes + (m-1)*m*2
     return g
 
 if __name__ == '__main__':

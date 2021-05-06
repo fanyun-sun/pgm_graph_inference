@@ -58,7 +58,7 @@ class GGNN(nn.Module):
     # unbatch version for debugging
     def forward(self, J, b):
         device = J.device
-        n_var_nodes = len(J)
+        # n_var_nodes = len(J)
         row, col = torch.nonzero(J).t()
         n_edges = row.shape[0]
         factors = [(row[i].item(), col[i].item()) for i in range(len(row)) if row[i] < col[i]]
