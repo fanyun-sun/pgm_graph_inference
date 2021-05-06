@@ -81,6 +81,7 @@ def build_FactorGraph_from_BMRF(J, b):
 
     binary_factor_count, unary_factor_count = row.shape[0], variable_count
     factor_count = binary_factor_count+unary_factor_count
+
     for factor_idx in range(unary_factor_count):
         factor_dimension = 1
         all_factor_dimensions.append(factor_dimension)
@@ -209,10 +210,16 @@ class MaxBPNNInference(GatedGNNInference):
                 hidden_unit_message_dim, hidden_unit_readout_dim,
                 n_steps=10, load_path=None, sparse=True):
         Inference.__init__(self, mode)
+
+        normalization_flag=False
+        damping=.999
+        print('normalization_flag', normalization_flag)
+        print('damping', damping)
+
         self.model = MaxBPNN(
             mode=mode,
             hidden_size=hidden_unit_message_dim,
-            damping=.5, normalization_flag=True, #@hao: These four hyper-parameters are also important for the performance. Espeically the damping and the normalization flag.
+            damping=damping, normalization_flag=normalization_flag, #@hao: These four hyper-parameters are also important for the performance. Espeically the damping and the normalization flag.
             batch_norm_flag=False, maxiter=200,     #@hao: Probably we should modify the interface in train.py to tune these hyper-parameters?
         )
         if load_path is not None:

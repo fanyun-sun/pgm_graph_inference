@@ -123,6 +123,8 @@ if __name__ == "__main__":
     gnn_inference.save_model(model_path)
     print("Model saved in {}".format(model_path))
 
+    ### uncomment the following if you want the model to be trained ###
+
     # best_epoch = -1
     # best_loss = 1e9
     # for epoch in range(args.epochs):
@@ -138,7 +140,3 @@ if __name__ == "__main__":
 
         # if epoch - best_epoch > 4:
             # break
-
-    # losses = gnn_inference.history["loss"]
-    # plt.plot(range(1, len(losses)+1), losses)
-    # plt.savefig(os.path.join(args.model_dir, "training_hist_{}".format(args.train_set_name)))

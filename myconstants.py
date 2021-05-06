@@ -12,7 +12,7 @@ USE_SPARSE_GNN = True
 # DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DEVICE = torch.device('cpu')
 
-ASYMMETRIC = True
+ASYMMETRIC = False
 use_tree_bp = False
 use_my_bp = ASYMMETRIC
 
