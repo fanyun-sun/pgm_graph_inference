@@ -27,6 +27,7 @@ data_specs = {
 
 # add simple datasets
 data_specs.update({struct+"_small": {struct: [9]} for struct in struct_names})
+data_specs.update({struct+"_large": {struct: [16]} for struct in struct_names})
 assert "star_small" in data_specs
 
 # add compound datasets
