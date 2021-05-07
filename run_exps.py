@@ -207,15 +207,28 @@ def parse_exp_args():
     args = parser.parse_args()
     return args
 
+def kl_div(p, q):
+    """Kullback-Leibler divergence D(P || Q) for discrete distributions
+    Parameters
+    ----------
+    p, q : array-like, dtype=float, shape=n
+    Discrete probability distributions.
+    """
+    p = np.asarray(p, dtype=float)
+    q = np.asarray(q, dtype=float)
+
+    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
 def save_marginal_results(true_labels, gnn_labels, bp_labels, mcmc_labels, filename, colors=None):
     res = {'true_labels': true_labels, 'gnn_labels': gnn_labels, 'bp_labels': bp_labels,
             'mcmc_labels': mcmc_labels, 'colors': colors}
     for k, v in res.items():
         if k == 'colors':
             continue
-        print('{}, RMSE: {:.5f}'.format(k, np.sqrt(((np.array(true_labels) - np.array(v))**2).mean())))
+
+        kl = kl_div(np.array(true_labels), np.array(v))*2/len(true_labels)
+        print('{}, KL: {:.5f}, RMSE: {:.5f}'.format(k, kl, np.sqrt(((np.array(true_labels) - np.array(v))**2).mean())))
     np.save(filename, res, allow_pickle=True)
-    # np.save(filename, res)
 
 def plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels, filename):
     fsize=(10,10)

@@ -211,8 +211,8 @@ class MaxBPNNInference(GatedGNNInference):
                 n_steps=10, load_path=None, sparse=True):
         Inference.__init__(self, mode)
 
-        normalization_flag=False
-        damping=.999
+        normalization_flag=True
+        damping=.9999
         print('normalization_flag', normalization_flag)
         print('damping', damping)
 
@@ -220,7 +220,7 @@ class MaxBPNNInference(GatedGNNInference):
             mode=mode,
             hidden_size=hidden_unit_message_dim,
             damping=damping, normalization_flag=normalization_flag, #@hao: These four hyper-parameters are also important for the performance. Espeically the damping and the normalization flag.
-            batch_norm_flag=False, maxiter=200,     #@hao: Probably we should modify the interface in train.py to tune these hyper-parameters?
+            batch_norm_flag=False, maxiter=10,     #@hao: Probably we should modify the interface in train.py to tune these hyper-parameters?
         )
         if load_path is not None:
             self.model.load_state_dict(
