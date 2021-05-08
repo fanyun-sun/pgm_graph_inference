@@ -88,11 +88,11 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
      
     model_load_path = os.path.join(model_base_dir, args.model_name + '-' +  train_set_name)
 
-    train_data = get_dataset_by_name(train_set_name, train_path)
+    # train_data = get_dataset_by_name(train_set_name, train_path)
     test_data  = get_dataset_by_name(test_set_name, test_path, mode=inference_mode)
 
     print('load model from {}'.format(model_load_path))
-    print('load train data from {}/{}'.format(train_path, train_set_name))
+    # print('load train data from {}/{}'.format(train_path, train_set_name))
     print('load test data from {}/{}'.format(test_path, test_set_name))
  
     # load model
@@ -106,7 +106,9 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     times = {}
 
     t0 = time()
+    print('inferencing gnn...')
     gnn_res = gnn_inference.run(test_data, DEVICE)
+    import ipdb;ipdb.set_trace()
     times["gnn"] = (time()-t0) / len(test_data)
 
     t0 = time()
@@ -116,6 +118,7 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     if use_my_bp:
         bp_algo = "mybp"
     bp = get_algorithm(bp_algo)(inference_mode)
+    print('inferencing bp...')
     bp_res = bp.run(test_data, use_log=True, verbose=False)
     times["bp"] = (time()-t0) / len(test_data)
 
@@ -214,21 +217,28 @@ def kl_div(p, q):
     p, q : array-like, dtype=float, shape=n
     Discrete probability distributions.
     """
-    p = np.asarray(p, dtype=float)
-    q = np.asarray(q, dtype=float)
-
-    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+    kls = []
+    for p, q in zip(p, q):
+        p = np.array([1.-p, p])
+        q = np.array([1.-q, q])
+        kl = np.sum(np.where(p != 0., p * np.log(p / q), 0))
+        kls.append(kl)
+    return np.mean(kls)
+    # p = np.asarray(p, dtype=float)
+    # q = np.asarray(q, dtype=float)
+    # return np.sum(np.where(p != 0., p * np.log(p / q), 0))
 
 def save_marginal_results(true_labels, gnn_labels, bp_labels, mcmc_labels, filename, colors=None):
     res = {'true_labels': true_labels, 'gnn_labels': gnn_labels, 'bp_labels': bp_labels,
             'mcmc_labels': mcmc_labels, 'colors': colors}
+    print('len(true_labels)', len(true_labels))
     for k, v in res.items():
         if k == 'colors':
             continue
 
-        kl = kl_div(np.array(true_labels), np.array(v))*2/len(true_labels)
+        kl = kl_div(true_labels, v)
         print('{}, KL: {:.5f}, RMSE: {:.5f}'.format(k, kl, np.sqrt(((np.array(true_labels) - np.array(v))**2).mean())))
-    np.save(filename, res, allow_pickle=True)
+    np.save(filename, res)
     # np.save(filename, res)
 
 def plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels, filename):
