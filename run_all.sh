@@ -15,10 +15,10 @@
                       #--verbose True
 
 echo -e "\tTraining your GNN"
-python train.py --train_set_name $1 --mode marginal --epochs 50 --verbose True --model_name $2
+python train.py --train_set_name $1 --mode marginal --epochs 50 --verbose True --model_name $2 --damping $3 $4
 
 echo -e "\tRunning tests"
-python run_exps.py --exp_name in_sample_$1 --model_name $2
+python run_exps.py --exp_name in_sample_$1 --model_name $2 --damping $3 $4
 
 #echo -e "\tCompute MAP for bp, mcmc, and gnn"
 #python compute_MAP_accuracy.py --data_file ./experiments/saved_exp_res/res_$1_small_$1_small_$2.npy

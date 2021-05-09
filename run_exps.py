@@ -82,26 +82,27 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     """
     tests for in-sample (same structure, same size, marginals)
     """
-    train_path = os.path.join(base_data_dir, "train")
+    # train_path = os.path.join(base_data_dir, "train")
     test_path = os.path.join(base_data_dir, "test")
-     
-    model_load_path = os.path.join(model_base_dir, args.model_name + '-' +  train_set_name)
 
-    train_data = get_dataset_by_name(train_set_name, train_path)
+    # model_load_path = os.path.join(model_base_dir, args.model_name + '-' +  train_set_name)
+    model_load_path = os.path.join(model_base_dir, args.model_name + '-' + train_set_name + str(args.normalize) + '-' + str(args.damping))
+
+    # train_data = get_dataset_by_name(train_set_name, train_path)
     test_data  = get_dataset_by_name(test_set_name, test_path, mode=inference_mode)
 
     print('load model from {}'.format(model_load_path))
-    print('load train data from {}/{}'.format(train_path, train_set_name))
+    # print('load train data from {}/{}'.format(train_path, train_set_name))
     print('load test data from {}/{}'.format(test_path, test_set_name))
- 
+
     # load model
     gnn_constructor = get_algorithm(args.model_name)
-    gnn_inference = gnn_constructor(inference_mode, n_hidden_states, 
+    gnn_inference = gnn_constructor(inference_mode, n_hidden_states,
                                     message_dim_P,hidden_unit_message_dim,
                                     hidden_unit_readout_dim, T,
-                                    model_load_path, USE_SPARSE_GNN)
+                                    model_load_path, USE_SPARSE_GNN,
+                                    normalize=args.normalize,damping=args.damping)
     print('model loaded from {}'.format(model_load_path))
-
     # run inference on test
     times = {}
 
@@ -204,6 +205,8 @@ def parse_exp_args():
                         help='name of experiment to run')
     parser.add_argument('--model_name', default='default',
                         type=str, help='model name, defaults to the train_set_name')
+    parser.add_argument('--normalize', default=False, action='store_true')
+    parser.add_argument('--damping', default=.99, type=float)
     args = parser.parse_args()
     return args
 
@@ -214,21 +217,29 @@ def kl_div(p, q):
     p, q : array-like, dtype=float, shape=n
     Discrete probability distributions.
     """
-    p = np.asarray(p, dtype=float)
-    q = np.asarray(q, dtype=float)
-
-    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+    kls = []
+    for p, q in zip(p, q):
+        p = np.array([1.-p, p])
+        q = np.array([1.-q, q])
+        kl = np.sum(np.where(p != 0., p * np.log(p / q), 0))
+        kls.append(kl)
+    return np.mean(kls)
+    # p = np.asarray(p, dtype=float)
+    # q = np.asarray(q, dtype=float)
+    # return np.sum(np.where(p != 0., p * np.log(p / q), 0))
 
 def save_marginal_results(true_labels, gnn_labels, bp_labels, mcmc_labels, filename, colors=None):
     res = {'true_labels': true_labels, 'gnn_labels': gnn_labels, 'bp_labels': bp_labels,
             'mcmc_labels': mcmc_labels, 'colors': colors}
+    print('len(true_labels)', len(true_labels))
     for k, v in res.items():
         if k == 'colors':
             continue
 
-        kl = kl_div(np.array(true_labels), np.array(v))*2/len(true_labels)
+        kl = kl_div(true_labels, v)
         print('{}, KL: {:.5f}, RMSE: {:.5f}'.format(k, kl, np.sqrt(((np.array(true_labels) - np.array(v))**2).mean())))
-    np.save(filename, res, allow_pickle=True)
+    np.save(filename, res)
+    # np.save(filename, res)
 
 def plot_marginal_results_individual(true_labels, gnn_labels, bp_labels, mcmc_labels, filename):
     fsize=(10,10)

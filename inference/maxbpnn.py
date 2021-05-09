@@ -187,7 +187,7 @@ def build_FactorGraph_from_BMRF(J, b):
 class MaxBPNN(nn.Module):
     def __init__(self, mode='map', damping=0., normalization_flag=True,
                  hidden_size=64, batch_norm_flag=True,
-                 maxiter=10000, tol=1e-9,
+                 maxiter=10000, tol=1e-20,
                  src_names=['diff_f2v_messages', 'diff_beliefs'],):
         super(MaxBPNN, self).__init__()
         if mode not in ["marginal", "map"]:
@@ -208,13 +208,13 @@ class MaxBPNN(nn.Module):
 class MaxBPNNInference(GatedGNNInference):
     def __init__(self, mode, state_dim, message_dim,
                 hidden_unit_message_dim, hidden_unit_readout_dim,
-                n_steps=10, load_path=None, sparse=True):
+                n_steps=10, load_path=None, sparse=True, damping=.5, normalize=False):
         Inference.__init__(self, mode)
 
-        normalization_flag=True
-        damping=.9999
-        print('normalization_flag', normalization_flag)
-        print('damping', damping)
+        normalization_flag=normalize
+        damping=damping
+        with open('results.log', 'a+') as f:
+            f.write('{},{}\n'.format(normalization_flag, damping))
 
         self.model = MaxBPNN(
             mode=mode,

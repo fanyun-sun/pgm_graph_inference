@@ -30,7 +30,7 @@ class CrossEntropyComputer:
 class KLDivLossComputer:
     def __init__(self):
         self.computer = nn.KLDivLoss()
-    
+
     def __call__(self, output_probs, targets):
         logits = torch.log(output_probs)
         return self.computer(logits, targets)
@@ -54,8 +54,9 @@ def parse_train_args():
     parser.add_argument('--epochs', default=1, type=int,
                         help='number of epochs to train for')
 
-    # non-critical arguments, fine with default
-    # model_name can be used for different hyperparameters later
+    parser.add_argument('--normalize', default=False, action='store_true')
+    parser.add_argument('--damping', default=.99, type=float) 
+    # non-critical arguments, fine with default model_name can be used for different hyperparameters later
     parser.add_argument('--model_name', default='default',
                         type=str, help='model name, defaults to the train_set_name')
     parser.add_argument('--data_dir', default='./graphical_models/datasets/train',
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     dataset = get_dataset_by_name(args.train_set_name, args.data_dir, 
                                   mode=args.mode)
     os.makedirs(args.model_dir, exist_ok=True)
-    model_path = os.path.join(args.model_dir, args.model_name + '-' + args.train_set_name)
+    model_path = os.path.join(args.model_dir, args.model_name + '-' + args.train_set_name + str(args.normalize) + '-' + str(args.damping))
 
     # # filter by mode:
     # if args.mode =="marginal":
@@ -104,7 +105,8 @@ if __name__ == "__main__":
         gnn_constructor = get_algorithm(args.model_name)
     gnn_inference = gnn_constructor(args.mode, n_hidden_states, message_dim_P,
                                     hidden_unit_message_dim, hidden_unit_readout_dim,
-                                    T, sparse=USE_SPARSE_GNN)
+                                    T, sparse=USE_SPARSE_GNN, normalize=args.normalize,
+                                    damping=args.damping)
     if args.use_pretrained != 'none':
         model_path_pre = os.path.join(args.model_dir, args.use_pretrained)
         gnn_inference.load_model(model_path_pre)
@@ -120,23 +122,23 @@ if __name__ == "__main__":
     else:
         criterion = CrossEntropyMAPComputer()
 
-    gnn_inference.save_model(model_path)
-    print("Model saved in {}".format(model_path))
+    # gnn_inference.save_model(model_path)
+    # print("Model saved in {}".format(model_path))
 
     ### uncomment the following if you want the model to be trained ###
 
-    # best_epoch = -1
-    # best_loss = 1e9
-    # for epoch in range(args.epochs):
-        # gnn_inference.train(dataset, optimizer, criterion, DEVICE)
-        # loss = gnn_inference.history["loss"][-1]
+    best_epoch = -1
+    best_loss = 1e9
+    for epoch in range(args.epochs):
+        gnn_inference.train(dataset, optimizer, criterion, DEVICE)
+        loss = gnn_inference.history["loss"][-1]
 
-        # if loss < best_loss:
-            # best_loss = loss
-            # best_epoch = epoch
-            # gnn_inference.save_model(model_path)
-            # print('Epoch {}: loss {}'.format(epoch, loss))
-            # print("Model saved in {}".format(model_path))
+        if loss < best_loss:
+            best_loss = loss
+            best_epoch = epoch
+            gnn_inference.save_model(model_path)
+            print('Epoch {}: loss {}'.format(epoch, loss))
+            print("Model saved in {}".format(model_path))
 
-        # if epoch - best_epoch > 4:
-            # break
+        if epoch - best_epoch > 4:
+            break
