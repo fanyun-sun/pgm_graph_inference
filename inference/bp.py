@@ -57,7 +57,7 @@ class BeliefPropagation(Inference):
         else:
             sumOp = np.max
         # storage, W should be symmetric 
-        max_iters = 100
+        max_iters = 200
         epsilon = 1e-20 # determines when to stop
 
         row, col = np.where(graph.W)
@@ -118,7 +118,8 @@ class BeliefPropagation(Inference):
                 # update
                 messages[index_bases[i]:index_bases[i]+degrees[i]] = \
                     sumOp(messages[index_bases[i]:index_bases[i]+degrees[i]].reshape(degrees[i],2,1) + local_potential, axis=1)
- 
+
+            messages = .5*messages + .5*old_messages
             # check convergence 
             if use_log:
                 error = (self._safe_norm_exp(messages) - self._safe_norm_exp(old_messages))**2
@@ -130,9 +131,8 @@ class BeliefPropagation(Inference):
             else:
                 error = 0.
 
-            if error < epsilon: 
+            if error < epsilon:
                 converged = True
-                #print(error)
                 break
 
         if self.verbose: print("Is BP converged: {}".format(converged))
@@ -145,9 +145,9 @@ class BeliefPropagation(Inference):
                 probs[i] = np.exp(probs[i])
             for j in neighbors[i]:
                 if use_log:
-                    probs[i] += messages[index_bases[j]+neighbors[j].index(i)] 
+                    probs[i] += messages[index_bases[j]+neighbors[j].index(i)]
                 else:
-                    probs[i] *= messages[index_bases[j]+neighbors[j].index(i)] 
+                    probs[i] *= messages[index_bases[j]+neighbors[j].index(i)]
         # normalize
         if self.mode == 'marginal':
             if use_log:
@@ -159,6 +159,9 @@ class BeliefPropagation(Inference):
             results = np.argmax(probs, axis=1)
             results[results==0] = -1
 
+        print(graph.W)
+        print(results)
+        input()
         return results
 
 
