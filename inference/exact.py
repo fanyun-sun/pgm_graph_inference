@@ -40,7 +40,7 @@ class ExactInference(Inference):
             if self.mode == "marginal":
                 graph.factor_graph.brute_force()
                 marginals = np.array([graph.factor_graph.nodes['{}'.format(i)].bfmarginal for i in range(n)])
-                print(marginals)
+                return marginals
 
         # compute joint probabilities
         # array of shape [2,...,2]
