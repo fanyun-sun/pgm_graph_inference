@@ -120,6 +120,9 @@ if __name__ == "__main__":
     else:
         criterion = CrossEntropyMAPComputer()
 
+    gnn_inference.save_model(model_path)
+    print("Model saved in {}".format(model_path))
+
     best_epoch = -1
     best_loss = 1e9
     for epoch in range(args.epochs):

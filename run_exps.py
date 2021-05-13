@@ -108,7 +108,6 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     t0 = time()
     print('inferencing gnn...')
     gnn_res = gnn_inference.run(test_data, DEVICE)
-    import ipdb;ipdb.set_trace()
     times["gnn"] = (time()-t0) / len(test_data)
 
     t0 = time()

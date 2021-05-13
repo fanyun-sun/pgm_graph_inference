@@ -15,11 +15,14 @@ from inference.mybp import MyBeliefPropagation
 from inference.factor_gnn_inference import FactorGNNInference
 from inference.vanilla_gnn_inference import VanillaGNNInference
 from inference.mgnn_inference import MGNNInference
+from inference.bpnn_inference import BPNNInference
 
 
 def get_algorithm(algo_name):
     """ Returns a constructor """
-    if algo_name == 'mgnn_inference':
+    if algo_name == 'bpnn_inference':
+        return BPNNInference 
+    elif algo_name == 'mgnn_inference':
         return MGNNInference
     elif algo_name == 'vanilla_gnn_inference':
         return VanillaGNNInference
