@@ -16,11 +16,14 @@ from inference.factor_gnn_inference import FactorGNNInference
 from inference.vanilla_gnn_inference import VanillaGNNInference
 from inference.mgnn_inference import MGNNInference
 from inference.bpnn_inference import BPNNInference
+from inference.fenbp_inference import FENBPInference
 
 
 def get_algorithm(algo_name):
     """ Returns a constructor """
-    if algo_name == 'bpnn_inference':
+    if algo_name == 'fenbp_inference':
+        return FENBPInference
+    elif algo_name == 'bpnn_inference':
         return BPNNInference 
     elif algo_name == 'mgnn_inference':
         return MGNNInference
