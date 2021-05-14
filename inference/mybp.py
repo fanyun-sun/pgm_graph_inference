@@ -61,6 +61,9 @@ class MyBeliefPropagation(Inference):
         g = graph.factor_graph
         g.compute_marginals(max_iter=200, tolerance=1e-20)
         results = probs = np.array([g.nodes['{}'.format(i)].marginal() for i in range(n_nodes)])
+        # print(graph.W)
+        # print(results)
+        # input()
         # probs should be `
         # normalize
 

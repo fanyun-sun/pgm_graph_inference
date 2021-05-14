@@ -159,9 +159,6 @@ class BeliefPropagation(Inference):
             results = np.argmax(probs, axis=1)
             results[results==0] = -1
 
-        print(graph.W)
-        print(results)
-        input()
         return results
 
 

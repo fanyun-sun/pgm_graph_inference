@@ -31,7 +31,7 @@ class GGNN(nn.Module):
             # nn.Linear(self.hidden_unit_message_dim, self.message_dim),
         # )
         self.calibration = nn.Sequential(
-            nn.Linear(2, self.hidden_unit_readout_dim),
+            nn.Linear(4, self.hidden_unit_readout_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_unit_readout_dim, self.hidden_unit_readout_dim),
             nn.ReLU(),
@@ -46,8 +46,9 @@ class GGNN(nn.Module):
     def _initialization(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                m.weight.data.normal_(0, 0.1)
-                m.bias.data.fill_(0)
+                # m.weight.data.normal_(0, 0.1)
+                m.weight.data.fill_(0.)
+                m.bias.data.fill_(0.)
 
     def _safe_norm_exp(self, logit):
         tmp = torch.max(logit, dim=1, keepdims=True)
@@ -73,9 +74,8 @@ class GGNN(nn.Module):
     # unbatch version for debugging
     def forward(self, J, b):
         use_log = True
-        # storage, W should be symmetric 
         max_iters = 10
-        epsilon = 1e-20 # determines when to stop
+        # epsilon = 1e-20 # determines when to stop
 
         row, col = np.where(J)
         n_V, n_E = len(b), len(row)
@@ -103,6 +103,7 @@ class GGNN(nn.Module):
         for iter in range(max_iters):
             # save old message for checking convergence
             old_messages = messages.clone()
+            messages = messages.detach()
             # update messages
             for i in ordered_nodes:
                 # print("updating message at", i)
@@ -136,8 +137,8 @@ class GGNN(nn.Module):
                 messages[index_bases[i]:index_bases[i]+degrees[i]] = \
                     torch.logsumexp(messages[index_bases[i]:index_bases[i]+degrees[i]].reshape(degrees[i],2,1) + local_potential, dim=1)
             # print('start adjusting ...')
-            alpha = self.sigmoid(self.calibration(messages))
-            messages = alpha*messages + (1-alpha)*old_messages
+            alpha = self.sigmoid(self.calibration(torch.cat([messages, old_messages], dim=-1)))
+            messages = (1.-alpha)*messages + alpha*old_messages
 
             # check convergence 
             # if use_log:

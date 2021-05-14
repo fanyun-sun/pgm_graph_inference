@@ -99,7 +99,7 @@ class BPNNInference(Inference):
                 self.model.zero_grad()
                 batch_loss=[]
                 mean_losses.append(ll_mean.item())
-            if i > 10:
-                break
+            # if i > 2000:
+                # break
 
         self.history["loss"].append(np.mean(mean_losses))
