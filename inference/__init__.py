@@ -43,7 +43,8 @@ def get_algorithm(algo_name):
     elif algo_name == "tree_bp":
         return TreeBP
     elif algo_name == "gnn_inference":
-        return GatedGNNInference
+        assert False
+        # return GatedGNNInference
     elif algo_name == "exact":
         return ExactInference
     elif algo_name == "mcmc":

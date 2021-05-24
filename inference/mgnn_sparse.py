@@ -148,19 +148,6 @@ class GGNN(nn.Module):
                                            fac2var_hidden_states[col, :],
                                            v2f_to_f2v_feat[row, col, :]], dim=-1)
             edge_messages = self.fac2var_message_passing(raw_edge_messages)
-            # norm = torch.norm(edge_messages, p=2, dim=-1).unsqueeze(-1).detach()
-            # edge_messages = edge_messages.div(norm.expand_as(edge_messages))
-            # for ii, jj in zip(row, col):
-                # u, fv = var2fac_edge_index[ii]
-                # fu, v = fac2var_edge_index[jj]
-                # assert fu == fv and u != v
-                # A, B = J[u, v].item(), J[v, u].item()
-                # ftable = torch.Tensor([[A+B, -A],
-                                       # [-B, A+B]])
-                # edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(-1)).sum(dim=0)
-                #or 
-                #edge_messages[ii, :] = (ftable + edge_messages[ii, :].unsqueeze(0)).sum(dim=-1)
-                # import ipdb;ipdb.set_trace()
 
             node_messages = scatter(edge_messages, col, dim=0, reduce='sum')
             fac2var_hidden_states = self.fac2var_propagator(node_messages, fac2var_hidden_states)
