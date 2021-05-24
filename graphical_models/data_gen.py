@@ -103,7 +103,6 @@ def construct_binary_mrf(struct, n_nodes, shuffle_nodes=True):
     mask = generate_struct_mask(struct, n_nodes, shuffle_nodes)
     W *= mask
     graph = BinaryMRF(W, b, struct=struct)
-    graph.factor_graph = to_factor_graph(graph)
     return graph
 
 
