@@ -420,9 +420,13 @@ def to_factor_graph(graph):
             if graph.W[i, j] != 0.:
                 factor_name = 'f{}{}'.format(i,j)
                 fij = Factor(factor_name, np.array([
-                    [np.exp(graph.W[i,j] + graph.W[j,i]), np.exp(-2*graph.W[i,j])],
-                    [np.exp(-2*graph.W[j,i]), np.exp(graph.W[i,j]+ graph.W[j, i])],
+                    [np.exp((graph.W[i,j] + graph.W[j,i])/2), np.exp(-graph.W[i,j])],
+                    [np.exp(-graph.W[j,i]), np.exp((graph.W[i,j]+ graph.W[j, i])/2)],
                 ]))
+                # fij = Factor(factor_name, np.array([
+                    # [np.exp(graph.W[i,j] + graph.W[j,i]), np.exp(-2*graph.W[i,j])],
+                    # [np.exp(-2*graph.W[j,i]), np.exp(graph.W[i,j]+ graph.W[j, i])],
+                # ]))
                 g.add(fij)
                 g.append(factor_name, variables[i])
                 g.append(factor_name, variables[j])

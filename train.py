@@ -49,6 +49,8 @@ def parse_train_args():
     # critical arguments, change them
     parser.add_argument('--train_set_name', type=str,
                         help='name of training set (see experiments/exp_helpers.py)')
+    parser.add_argument('--train_num', type=int, default=1000000,
+                        help='')
     parser.add_argument('--mode', default='marginal', type=str,
                         help='type of inference to train GNN to perform')
     parser.add_argument('--epochs', default=1, type=int,
@@ -76,10 +78,9 @@ if __name__ == "__main__":
     print("Training a model `{}` on training dataset `{}`".format(args.model_name,
                                                                   args.train_set_name))
 
-    dataset = get_dataset_by_name(args.train_set_name, args.data_dir, 
-                                  mode=args.mode)
+    dataset = get_dataset_by_name(args.train_set_name, args.data_dir, args.train_num, mode=args.mode)
     os.makedirs(args.model_dir, exist_ok=True)
-    model_path = os.path.join(args.model_dir, args.model_name + '-' + args.train_set_name)
+    model_path = os.path.join(args.model_dir, '-'.join([args.model_name, args.train_set_name, str(args.train_num)]))
 
     # # filter by mode:
     # if args.mode =="marginal":
@@ -138,7 +139,3 @@ if __name__ == "__main__":
 
         if epoch - best_epoch > 4:
             break
-
-    # losses = gnn_inference.history["loss"]
-    # plt.plot(range(1, len(losses)+1), losses)
-    # plt.savefig(os.path.join(args.model_dir, "training_hist_{}".format(args.train_set_name)))

@@ -2,6 +2,12 @@
 
 *Authors: Ksenia Korovina, Lingxiao Zhao, Mark Cheung, Wenwen Si*
 
+##
+
+* To generate data: `$ ./make_data.sh grid`
+* To run experiments: `$./run_all.sh grid MODEL TRAIN_NUM`
+* For the list of available models, refer to `inference/__init.py`
+
 ## Structure of the repo
 
 * `graphical_models` directory contains definitions of `GraphicalModel` class (objects abbreviated as "graphs"); `graphical_models/datasets` contains labeled data. Labeled graphs are stored as `.npy` files in the following directory structure:

@@ -1,20 +1,9 @@
 """
-
-Defines GNNInference objects: models that perform
-inference, given a graphical model.
-Authors: markcheu@andrew.cmu.edu, kkorovin@cs.cmu.edu
-
-Options:
-- Gated Graph neural network:
-https://github.com/thaonguyen19/gated-graph-neural-network-pytorch/blob/master/model_pytorch.py
-- TBA
-
+FE-NBP
 """
 
 import torch
-import torch.nn as nn
 import numpy as np
-import torch.optim as optim
 from tqdm import tqdm
 
 from inference.core import Inference
@@ -52,8 +41,6 @@ class FENBPInference(Inference):
             b = torch.from_numpy(graph.b).float().to(device)
             J = torch.from_numpy(graph.W).float().to(device)
             out = self.model(J,b)
-            # out = self.model(graph.W, graph.b)
-            # return out
             return out.detach().cpu().numpy()
 
     def run(self, graphs, device, verbose=False):
@@ -86,8 +73,6 @@ class FENBPInference(Inference):
             J = torch.from_numpy(graph.W).float().to(device)
             out = self.model(J, b)
 
-            # out = self.model(graph.W,graph.b)
-
             target = torch.from_numpy(graph.marginal).float().to(device)
             loss = criterion(out, target)
 
@@ -100,7 +85,7 @@ class FENBPInference(Inference):
                 self.model.zero_grad()
                 batch_loss=[]
                 mean_losses.append(ll_mean.item())
-            if i > 100:
+            if i > 50:
                 break
 
         self.history["loss"].append(np.mean(mean_losses))

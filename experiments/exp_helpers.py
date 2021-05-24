@@ -64,7 +64,7 @@ data_specs.update({"nontrees_approx":
                  })
 
 # Data loading ----------------------------------------------------------------
-def get_dataset_by_name(specs_name, data_dir, mode=None):
+def get_dataset_by_name(specs_name, data_dir, training_num, mode=None):
     """
     Assumes graphs live as
     graphical_models/datasets/{train/val/test}  <-- data_dir
@@ -86,6 +86,7 @@ def get_dataset_by_name(specs_name, data_dir, mode=None):
         raise ValueError("Specification {} not supported".format(specs_name))
     specs = data_specs[specs_name]
     graphs = []
+    num= 0
     for struct in specs:
         size_list = specs[struct]
         for size in size_list:
@@ -102,6 +103,12 @@ def get_dataset_by_name(specs_name, data_dir, mode=None):
                                            map_est=data_dict["map"])
                     graph.struct = struct
                     graphs.append(graph)
+                    num += 1
+                    if num == training_num:
+                        if mode is not None:
+                            graphs = [g for g in graphs if getattr(g, mode) is not None]
+                        print("Loaded {} graphs".format(len(graphs)))
+                        return graphs
 
     if mode is not None:
         graphs = [g for g in graphs if getattr(g, mode) is not None]

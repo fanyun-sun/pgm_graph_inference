@@ -95,8 +95,6 @@ class VGNN_sparse(nn.Module):
 
         for step in range(self.n_steps):
             # (dim0*dim1, dim2)
-            # node_messages = torch.cat([hidden_states[row,:],
-                                       # hidden_states[col,:]], dim=-1)
             edge_messages = torch.cat([hidden_states[row, :],
                                        hidden_states[col, :],
                                        edge_feat[row, col, :]], dim=-1)

@@ -1,10 +1,5 @@
 """
-
-Approximate inference using Belief Propagation
-Here we can rely on some existing library,
-for example https://github.com/mbforbes/py-factorgraph
-Authors: lingxiao@cmu.edu
-         kkorovin@cs.cmu.edu
+Modified from bp.py
 """
 
 import numpy as np
@@ -14,7 +9,7 @@ from tqdm import tqdm
 from inference.core import Inference
 
 
-class BeliefPropagation(Inference):
+class DampingBeliefPropagation(Inference):
     """
     A special case implementation of BP
     for binary MRFs.
@@ -38,7 +33,7 @@ class BeliefPropagation(Inference):
         c = np.nan_to_num(c)
         return c
 
-    def run_one(self, graph, use_log=True, smooth=0):
+    def run_one(self, graph, damping, use_log=True, smooth=0):
         # Asynchronous BP  
         # Sketch of algorithm:
         # -------------------
@@ -119,6 +114,7 @@ class BeliefPropagation(Inference):
                 messages[index_bases[i]:index_bases[i]+degrees[i]] = \
                     sumOp(messages[index_bases[i]:index_bases[i]+degrees[i]].reshape(degrees[i],2,1) + local_potential, axis=1)
 
+            messages = damping*messages + (1-damping)*old_messages
             # check convergence 
             if use_log:
                 error = (self._safe_norm_exp(messages) - self._safe_norm_exp(old_messages))**2
@@ -161,12 +157,12 @@ class BeliefPropagation(Inference):
         return results
 
 
-    def run(self, graphs, use_log=True, verbose=False):
+    def run(self, graphs, damping=.5, use_log=True, verbose=False):
         self.verbose = verbose
         res = []
         graph_iterator = tqdm(graphs) if self.verbose else graphs
         for graph in graph_iterator:
-            res.append(self.run_one(graph, use_log=use_log))
+            res.append(self.run_one(graph, damping=damping, use_log=use_log))
         return res
 
 

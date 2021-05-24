@@ -86,7 +86,7 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
     train_path = os.path.join(base_data_dir, "train")
     test_path = os.path.join(base_data_dir, "test")
      
-    model_load_path = os.path.join(model_base_dir, args.model_name + '-' +  train_set_name)
+    model_load_path = os.path.join(model_base_dir, '-'.join([args.model_name, train_set_name, str(args.train_num)]))
 
     # train_data = get_dataset_by_name(train_set_name, train_path)
     test_data  = get_dataset_by_name(test_set_name, test_path, mode=inference_mode)
@@ -118,13 +118,14 @@ def run_experiment(train_set_name, test_set_name, inference_mode="marginal",
         bp_algo = "mybp"
     bp = get_algorithm(bp_algo)(inference_mode)
     print('inferencing bp...')
-    bp_res = bp.run(test_data, use_log=True, verbose=False)
+    bp_res = gnn_res#bp.run(test_data, use_log=True, verbose=False)
+    # bp_res = bp.run(test_data, use_log=True, verbose=False)
     times["bp"] = (time()-t0) / len(test_data)
 
     # TODO! don't forget to uncomment
     t0 = time()
     mcmc = get_algorithm("mcmc")(inference_mode)
-    mcmc_res = mcmc.run(test_data)
+    mcmc_res = bp_res #mcmc.run(test_data)
     times["mcmc"] = (time()-t0) / len(test_data)
 
     #--- sanity check ----#
@@ -206,6 +207,7 @@ def parse_exp_args():
                         help='name of experiment to run')
     parser.add_argument('--model_name', default='default',
                         type=str, help='model name, defaults to the train_set_name')
+    parser.add_argument('--train_num', default=10000000, type=int)
     args = parser.parse_args()
     return args
 
