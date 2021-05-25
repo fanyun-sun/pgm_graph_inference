@@ -11,8 +11,6 @@ from myconstants import ASYMMETRIC
 
 from graphical_models.data_structs import BinaryMRF
 
-from factor_graph import to_factor_graph
-
 struct_names = ["star", "random_tree", "powerlaw_tree", "path",
                 "cycle", "ladder", "grid",
                 "circ_ladder", "barbell", "loll", "wheel",

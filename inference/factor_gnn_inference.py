@@ -12,28 +12,21 @@ https://github.com/thaonguyen19/gated-graph-neural-network-pytorch/blob/master/m
 """
 
 import torch
-import torch.nn as nn
 import numpy as np
-import torch.optim as optim
 from tqdm import tqdm
 
 from inference.core import Inference
-from inference.ggnn_model_sparse import GGNN as GGNN_sparse
-from inference.ggnn_model import GGNN
+from inference.factor_gnn_sparse import GGNN as GGNN_sparse
 
 
-class GatedGNNInference(Inference):
+class FactorGNNInference(Inference):
     def __init__(self, mode, state_dim, message_dim, 
                 hidden_unit_message_dim, hidden_unit_readout_dim, 
                 n_steps=10, load_path=None, sparse=True):
         Inference.__init__(self, mode)
-        self.model = GGNN(state_dim, message_dim,
+        self.model = GGNN_sparse(state_dim, message_dim,
                   hidden_unit_message_dim,
                   hidden_unit_readout_dim, n_steps) 
-        if sparse:
-            self.model = GGNN_sparse(state_dim, message_dim,
-                      hidden_unit_message_dim,
-                      hidden_unit_readout_dim, n_steps) 
 
         if load_path is not None:
             self.model.load_state_dict(
@@ -104,6 +97,7 @@ class GatedGNNInference(Inference):
                 self.model.zero_grad()
                 batch_loss=[]
                 mean_losses.append(ll_mean.item())
-            if i > 50: break
+            if i > 50:
+                break
 
         self.history["loss"].append(np.mean(mean_losses))

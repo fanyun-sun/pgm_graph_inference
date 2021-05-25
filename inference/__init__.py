@@ -8,7 +8,7 @@ Authors: kkorovin@cs.cmu.edu
 from inference.bp import BeliefPropagation
 from inference.bp_damping import DampingBeliefPropagation
 from inference.bp_nonsparse import BeliefPropagation_nonsparse
-from inference.gnn_inference import GatedGNNInference
+# from inference.gnn_inference import GatedGNNInference
 from inference.exact import ExactInference
 from inference.mcmc import GibbsSampling
 from inference.bp_tree import TreeBP

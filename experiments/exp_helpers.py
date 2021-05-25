@@ -98,7 +98,7 @@ def get_dataset_by_name(specs_name, data_dir, training_num, mode=None):
                     path_to_graph = os.path.join(directory, filename)
                     data_dict = np.load(path_to_graph, allow_pickle=True)[()]  # funny indexing
                     graph = BinaryMRF(data_dict["W"], data_dict["b"])
-                    graph.factor_graph = data_dict["factor_graph"]
+                    # graph.factor_graph = data_dict["factor_graph"]
                     graph.set_ground_truth(marginal_est=data_dict["marginal"],
                                            map_est=data_dict["map"])
                     graph.struct = struct
