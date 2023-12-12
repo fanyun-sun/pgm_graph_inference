@@ -1,6 +1,8 @@
-# Inference in graphical models with GNNs
+# Equivariant neural network for factor graphs
 
-*Authors: Ksenia Korovina, Lingxiao Zhao, Mark Cheung, Wenwen Si*
+*Authors: Fan-Yun Sun, Jonathan Kuck, Hao Tang, Stefano Ermon
+
+[Link to the paper](https://arxiv.org/abs/2109.14218)
 
 ##
 
@@ -59,4 +61,4 @@ To train the GNN inference, use `train.py`. Finally, use `./experiments/run_exps
 
 ## References
 
-[ICLR18](https://arxiv.org/abs/1803.07710)
+
